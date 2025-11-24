@@ -1,32 +1,32 @@
-// app/user/user-categories/page.tsx
+// app/supplier/supplier-categories/page.tsx
 'use client';
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import DataGridWrapper from '../../_components/_data-grid/DataGridWrapper';
-import { useCategoryColumns } from '../../_components/_hooks/useCategoryColumns';
+import { useSupplierCategoryColumns } from '../../_components/_hooks/useSupplierCategoryColumns';
 import DeleteConfirmationModal from '../../_components/_modals/DeleteConfirmationModal';
-import ViewCategoryModal from '../../_components/_view-modal/ViewCategoryModal';
+import ViewSupplierCategoryModal from '../../_components/_view-modal/ViewSupplierCategoryModal';
 import { TypeFilter } from '../../_components/_filters/StatusFilter';
 import DateRangeFilter from '../../_components/_filters/DateRangeFilter';
 
-// Updated interface to match your actual backend model
-interface BackendCategory {
+interface BackendSupplierCategory {
   _id: string;
-  role: string;
+  name: string;
   description: string;
-  categoryType: string;
+  productCategories: string[];
+  productType: 'new' | 'scrap';
   status: 'active' | 'inactive';
   createdAt: string;
   updatedAt: string;
 }
 
-const CategoriesPage = () => {
+const SupplierCategoriesPage = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
+  const [productTypeFilter, setProductTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -37,37 +37,37 @@ const CategoriesPage = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const limit = 10;
 
-  // Fetch categories data - ADDED STATUS FILTER
+  // Fetch supplier categories data
   const { data: categoriesData, isLoading, error } = useQuery({
-    queryKey: ['categories', search, typeFilter, statusFilter, startDate, endDate, currentPage],
+    queryKey: ['supplier-categories', search, productTypeFilter, statusFilter, startDate, endDate, currentPage],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: limit.toString(),
         ...(search && { search }),
-        ...(typeFilter && { categoryType: typeFilter }),
-        ...(statusFilter && { status: statusFilter }), // ADDED STATUS FILTER
+        ...(productTypeFilter && { productType: productTypeFilter }),
+        ...(statusFilter && { status: statusFilter }),
         ...(startDate && { startDate }),
         ...(endDate && { endDate }),
       });
 
-      console.log('Fetching categories from:', `http://localhost:5000/api/user-categories?${params}`);
+      console.log('Fetching supplier categories from:', `http://localhost:5000/api/supplier-categories?${params}`);
       
-      const response = await fetch(`http://localhost:5000/api/user-categories?${params}`);
+      const response = await fetch(`http://localhost:5000/api/supplier-categories?${params}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
-      console.log('Categories API Response:', data);
+      console.log('Supplier Categories API Response:', data);
       return data;
     },
   });
 
-  // Delete category function
-  const deleteCategory = async (categoryId: string): Promise<void> => {
-    const response = await fetch(`http://localhost:5000/api/user-categories/${categoryId}`, {
+  // Delete supplier category function
+  const deleteSupplierCategory = async (categoryId: string): Promise<void> => {
+    const response = await fetch(`http://localhost:5000/api/supplier-categories/${categoryId}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -76,61 +76,61 @@ const CategoriesPage = () => {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Failed to delete category: ${response.status}`);
+      throw new Error(errorData.message || `Failed to delete supplier category: ${response.status}`);
     }
 
     const result = await response.json();
     if (!result.success) {
-      throw new Error(result.message || 'Failed to delete category');
+      throw new Error(result.message || 'Failed to delete supplier category');
     }
   };
 
-  // Handle view category
+  // Handle view supplier category
   const handleViewCategory = (category: any) => {
     setViewingCategory(category);
     setIsViewModalOpen(true);
   };
 
-  // Handle edit category
+  // Handle edit supplier category
   const handleEditCategory = (category: any) => {
-    router.push(`/user/user-categories/edit-category?id=${category.id}`);
+    router.push(`/supplier/supplier-categories/edit-supplier-category?id=${category.id}`);
   };
 
-  // Handle delete category confirmation
+  // Handle delete supplier category confirmation
   const handleDeleteCategory = async () => {
     if (!deletingCategory) return;
     
     setIsDeleting(true);
     try {
-      await deleteCategory(deletingCategory.id);
+      await deleteSupplierCategory(deletingCategory.id);
       
       // FIXED: Better cache invalidation
       await Promise.all([
         queryClient.invalidateQueries({ 
-          queryKey: ['categories'], 
+          queryKey: ['supplier-categories'], 
           refetchType: 'all'
         }),
         queryClient.refetchQueries({
-          queryKey: ['categories']
+          queryKey: ['supplier-categories']
         })
       ]);
       
       setDeletingCategory(null);
-      console.log('Category deleted successfully');
+      console.log('Supplier category deleted successfully');
     } catch (error) {
-      console.error('Error deleting category:', error);
-      alert(`Failed to delete category: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Error deleting supplier category:', error);
+      alert(`Failed to delete supplier category: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Handle status change
+  // Handle status change - FIXED: Better cache invalidation
   const handleStatusChange = async (category: any, status: 'active' | 'inactive') => {
     try {
-      console.log('Update user category status:', category.id, status);
+      console.log('Update supplier category status:', category.id, status);
       
-      const response = await fetch(`http://localhost:5000/api/user-categories/${category.id}/status`, {
+      const response = await fetch(`http://localhost:5000/api/supplier-categories/${category.id}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -140,75 +140,79 @@ const CategoriesPage = () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to update category status: ${response.status}`);
+        throw new Error(errorData.message || `Failed to update supplier category status: ${response.status}`);
       }
 
       const result = await response.json();
       
       if (!result.success) {
-        throw new Error(result.message || 'Failed to update category status');
+        throw new Error(result.message || 'Failed to update supplier category status');
       }
 
       // FIXED: Better cache invalidation
       await Promise.all([
         queryClient.invalidateQueries({ 
-          queryKey: ['categories'], 
+          queryKey: ['supplier-categories'], 
           refetchType: 'all'
         }),
         queryClient.refetchQueries({
-          queryKey: ['categories']
+          queryKey: ['supplier-categories']
         })
       ]);
       
-      console.log('Category status updated successfully');
+      console.log('Supplier category status updated successfully');
     } catch (error) {
-      console.error('Error updating category status:', error);
-      alert(`Failed to update category status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Error updating supplier category status:', error);
+      alert(`Failed to update supplier category status: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
   // Extract data from backend response
-  const categories: BackendCategory[] = categoriesData?.data || [];
+  const categories: BackendSupplierCategory[] = categoriesData?.data || [];
   const totalCategories = categoriesData?.pagination?.totalItems || 0;
 
-  // Transform backend data to table format - SIMPLIFIED
+  // Transform backend data to table format
   const dataWithSerial = useMemo(() => {
-    return categories.map((category: BackendCategory, index: number) => ({
+    return categories.map((category: BackendSupplierCategory, index: number) => ({
       id: category._id,
       serialNo: (currentPage - 1) * limit + (index + 1),
-      role: category.role,
-      type: category.categoryType,
+      name: category.name,
       description: category.description,
-      status: category.status, // Backend now provides status field
+      productCategories: category.productCategories,
+      productType: category.productType,
+      status: category.status,
       createdAt: category.createdAt,
       updatedAt: category.updatedAt,
     }));
   }, [categories, currentPage, limit]);
 
-  // Handle Add Category button click
+  // Handle Add Supplier Category button click
   const handleAddCategory = () => {
-    router.push('/user/user-categories/add-categories');
+    router.push('/supplier/supplier-categories/add-supplier-category');
   };
 
-  const columns = useCategoryColumns({
+  const columns = useSupplierCategoryColumns({
     onEdit: handleEditCategory,
     onDelete: (category) => {
-      console.log('Delete category:', category);
+      console.log('Delete supplier category:', category);
       setDeletingCategory(category);
     },
     onStatusChange: handleStatusChange,
     onView: handleViewCategory
   });
 
-  const CategoryFilters = (
+  const SupplierCategoryFilters = (
     <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
-      <TypeFilter
-        value={typeFilter}
-        onChange={setTypeFilter}
-        placeholder="All Types"
-      />
+      <select
+        value={productTypeFilter}
+        onChange={(e) => setProductTypeFilter(e.target.value)}
+        className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+      >
+        <option value="">All Product Types</option>
+        <option value="new">New Products</option>
+        <option value="scrap">Scrap Products</option>
+      </select>
 
-      {/* ADDED STATUS FILTER */}
       <select
         value={statusFilter}
         onChange={(e) => setStatusFilter(e.target.value)}
@@ -228,7 +232,7 @@ const CategoriesPage = () => {
       
       <button
         onClick={() => {
-          setTypeFilter('');
+          setProductTypeFilter('');
           setStatusFilter('');
           setStartDate('');
           setEndDate('');
@@ -247,7 +251,7 @@ const CategoriesPage = () => {
     return (
       <div className="p-6">
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <h3 className="text-sm font-medium text-red-800">Error loading categories</h3>
+          <h3 className="text-sm font-medium text-red-800">Error loading supplier categories</h3>
           <p className="text-sm text-red-600 mt-1">{(error as Error).message}</p>
           <button 
             onClick={() => window.location.reload()}
@@ -263,8 +267,8 @@ const CategoriesPage = () => {
   return (
     <div>
       <DataGridWrapper
-        title="User Categories Management"
-        description="Manage all user categories in the system"
+        title="Supplier Categories Management"
+        description="Manage all supplier product categories in the system"
         columns={columns}
         data={dataWithSerial}
         isLoading={isLoading}
@@ -275,14 +279,14 @@ const CategoriesPage = () => {
         isSearchEnabled={true}
         searchState={search}
         setSearchState={setSearch}
-        searchPlaceholder="Search categories by role..."
-        filtersComponent={CategoryFilters}
+        searchPlaceholder="Search supplier categories by name..."
+        filtersComponent={SupplierCategoryFilters}
         defaultFiltersExpanded={true}
         hasAddButton={true}
         addButtonText="Add Category"
         addButtonOnClick={handleAddCategory}
         hasExportButton={true}
-        onExport={() => console.log('Export categories')}
+        onExport={() => console.log('Export supplier categories')}
       />
 
       {/* Delete Confirmation Modal */}
@@ -290,15 +294,14 @@ const CategoriesPage = () => {
         isOpen={!!deletingCategory}
         onClose={() => !isDeleting && setDeletingCategory(null)}
         onConfirm={handleDeleteCategory}
-        title="Delete Category"
-        message="Are you sure you want to delete this category? This action cannot be undone."
-        itemName={deletingCategory?.role}
+        title="Delete Supplier Category"
+        message="Are you sure you want to delete this supplier category? This action cannot be undone."
+        itemName={deletingCategory?.name}
         isLoading={isDeleting}
-        type="category"
       />
 
-      {/* View Category Modal */}
-      <ViewCategoryModal
+      {/* View Supplier Category Modal */}
+      <ViewSupplierCategoryModal
         isOpen={isViewModalOpen}
         onClose={() => {
           setIsViewModalOpen(false);
@@ -310,4 +313,4 @@ const CategoriesPage = () => {
   );
 };
 
-export default CategoriesPage;
+export default SupplierCategoriesPage;

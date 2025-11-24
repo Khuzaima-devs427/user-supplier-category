@@ -1,25 +1,25 @@
+// app/_components/_hooks/useSupplierCategoryColumns.tsx
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Eye, Edit, Trash2, ChevronDown, Check } from 'lucide-react';
 
-interface User {
+interface SupplierCategory {
   id: string;
   serialNo: number;
   name: string;
-  email: string;
-  phone: string;
-  category: string | { id: string; name: string }; // Updated to handle both string and object
+  description: string;
+  productCategories: string[];
+  productType: 'new' | 'scrap';
   status: 'active' | 'inactive';
-  isEmailVerified: boolean;
   createdAt: string;
+  updatedAt: string;
 }
 
-interface UseUserColumnsProps {
-  onEdit?: (user: User) => void;
-  onDelete?: (user: User) => void;
-  onStatusChange?: (user: User, status: 'active' | 'inactive') => void;
-  onEmailVerificationChange?: (user: User, isEmailVerified: boolean) => void;
-  onView: (user: any) => void; // Added only this line
+interface UseSupplierCategoryColumnsProps {
+  onEdit?: (category: SupplierCategory) => void;
+  onDelete?: (category: SupplierCategory) => void;
+  onStatusChange?: (category: SupplierCategory, status: 'active' | 'inactive') => void;
+  onView?: (category: SupplierCategory) => void;
 }
 
 /* -------------------------
@@ -140,80 +140,90 @@ function PortalDropdown<T>({
 /* -------------------------
    Main Hook
 -------------------------- */
-export const useUserColumns = ({
+export const useSupplierCategoryColumns = ({
   onEdit,
   onDelete,
   onStatusChange,
-  onView,
-  onEmailVerificationChange
-}: UseUserColumnsProps) => {
+  onView
+}: UseSupplierCategoryColumnsProps) => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const refs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const statusOptions = [
     { value: 'active' as const, label: 'Active', color: 'bg-green-100 text-green-800' },
     { value: 'inactive' as const, label: 'Inactive', color: 'bg-red-100 text-red-800' }
   ];
 
-  const emailVerificationOptions = [
-    { value: true, label: 'Verified', color: 'bg-green-100 text-green-800' },
-    { value: false, label: 'Unverified', color: 'bg-red-100 text-red-800' }
+  const productTypeOptions = [
+    { value: 'new' as const, label: 'New Products', color: 'bg-blue-100 text-blue-800' },
+    { value: 'scrap' as const, label: 'Scrap Products', color: 'bg-orange-100 text-orange-800' }
   ];
-
-  const refs = useRef<Record<string, HTMLButtonElement | null>>({});
-
-  // Safe category formatter function - handles both string and object
-  const formatCategory = (category: string | { id: string; name: string }): string => {
-    if (!category) {
-      return 'No Category';
-    }
-    
-    if (typeof category === 'string') {
-      return category
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, (char) => char.toUpperCase());
-    }
-    
-    // Handle category object
-    return category.name
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, (char) => char.toUpperCase());
-  };
 
   const columns = useMemo(
     () => [
       {
         name: 'S.No',
-        selector: (row: User) => row.serialNo,
+        selector: (row: SupplierCategory) => row.serialNo,
         sortable: true,
         width: '80px',
       },
       {
         name: 'Name',
-        selector: (row: User) => row.name,
+        selector: (row: SupplierCategory) => row.name,
         sortable: true,
       },
       {
-        name: 'Email',
-        selector: (row: User) => row.email,
+        name: 'Description',
+        selector: (row: SupplierCategory) => row.description,
         sortable: true,
-      },
-      {
-        name: 'Category',
-        selector: (row: User) => row.category,
-        sortable: true,
-        cell: (row: User) => (
-          <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
-            {formatCategory(row.category)}
-          </span>
+        cell: (row: SupplierCategory) => (
+          <div className="max-w-xs truncate" title={row.description || 'No description'}>
+            {row.description || 'No description'}
+          </div>
         ),
       },
-
-      /* STATUS */
+      {
+        name: 'Product Categories',
+        selector: (row: SupplierCategory) => row.productCategories.join(', '),
+        sortable: true,
+        cell: (row: SupplierCategory) => (
+          <div className="max-w-xs">
+            <div className="flex flex-wrap gap-1">
+              {row.productCategories.slice(0, 2).map((category, index) => (
+                <span
+                  key={index}
+                  className="inline-block px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full"
+                >
+                  {category}
+                </span>
+              ))}
+              {row.productCategories.length > 2 && (
+                <span className="inline-block px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
+                  +{row.productCategories.length - 2} more
+                </span>
+              )}
+            </div>
+          </div>
+        ),
+      },
+      {
+        name: 'Product Type',
+        selector: (row: SupplierCategory) => row.productType,
+        sortable: true,
+        cell: (row: SupplierCategory) => {
+          const current = productTypeOptions.find((p) => p.value === row.productType);
+          return (
+            <span className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${current?.color}`}>
+              {current?.label}
+            </span>
+          );
+        }
+      },
       {
         name: 'Status',
-        selector: (row: User) => row.status,
+        selector: (row: SupplierCategory) => row.status,
         sortable: true,
-        cell: (row: User) => {
+        cell: (row: SupplierCategory) => {
           const id = `status-${row.id}`;
           const isOpen = activeDropdown === id;
           const current = statusOptions.find((s) => s.value === row.status);
@@ -246,75 +256,35 @@ export const useUserColumns = ({
           );
         }
       },
-
-      /* EMAIL VERIFIED */
       {
-        name: 'Email Verified',
-        selector: (row: User) => row.isEmailVerified,
+        name: 'Created Date',
+        selector: (row: SupplierCategory) => row.createdAt,
         sortable: true,
-        cell: (row: User) => {
-          const id = `email-${row.id}`;
-          const isOpen = activeDropdown === id;
-          const current = emailVerificationOptions.find((e) => e.value === row.isEmailVerified);
-
-          return (
-            <div className="relative overflow-visible">
-              <button
-                ref={(el) => {
-                  refs.current[id] = el;
-                }}
-                onClick={() => setActiveDropdown(isOpen ? null : id)}
-                className={`px-3 py-1 inline-flex items-center text-xs font-semibold rounded-full transition-all duration-200 ${current?.color}`}
-              >
-                {current?.label}
-                <ChevronDown className={`w-3 h-3 ml-1 ${isOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              <PortalDropdown
-                anchorEl={refs.current[id]}
-                isOpen={isOpen}
-                selectedValue={row.isEmailVerified}
-                options={emailVerificationOptions}
-                onClose={() => setActiveDropdown(null)}
-                onSelect={(o) => {
-                  onEmailVerificationChange?.(row, o.value);
-                  setActiveDropdown(null);
-                }}
-              />
-            </div>
-          );
-        }
+        width: '140px',
+        cell: (row: SupplierCategory) => new Date(row.createdAt).toLocaleDateString(),
       },
-
-      {
-        name: 'Created At',
-        selector: (row: User) => row.createdAt,
-        sortable: true,
-        cell: (row: User) => new Date(row.createdAt).toLocaleDateString()
-      },
-
       {
         name: 'Actions',
-        cell: (row: User) => (
+        cell: (row: SupplierCategory) => (
           <div className="flex space-x-2">
             <button
               onClick={() => onView?.(row)}
               className="flex items-center space-x-1 bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded transition duration-200"
-              title="View Category"
+              title="View Supplier Category"
             >
               <Eye className="w-3 h-3" />
             </button>
             <button
               onClick={() => onEdit?.(row)}
               className="flex items-center space-x-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded transition duration-200"
-              title="Edit User"
+              title="Edit Supplier Category"
             >
               <Edit className="w-3 h-3" />
             </button>
             <button
               onClick={() => onDelete?.(row)}
               className="flex items-center space-x-1 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded transition duration-200"
-              title="Delete User"
+              title="Delete Supplier Category"
             >
               <Trash2 className="w-3 h-3" />
             </button>
@@ -322,7 +292,7 @@ export const useUserColumns = ({
         ),
       },
     ],
-    [onEdit, onDelete, onStatusChange, onEmailVerificationChange, activeDropdown]
+    [onEdit, onDelete, onStatusChange, onView, activeDropdown]
   );
 
   return columns;

@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Edit, Trash2, ChevronDown, Check } from 'lucide-react';
+import {Eye, Edit, Trash2, ChevronDown, Check } from 'lucide-react';
 
 interface Supplier {
   id: string;
@@ -20,6 +20,7 @@ interface UseSupplierColumnsProps {
   onDelete?: (supplier: Supplier) => void;
   onStatusChange?: (supplier: Supplier, status: 'active' | 'inactive') => void;
   onEmailVerificationChange?: (supplier: Supplier, isEmailVerified: boolean) => void;
+   onView?: (supplier: Supplier) => void;
 }
 
 /* -------------------------
@@ -53,37 +54,36 @@ function PortalDropdown<T>({
       return;
     }
 
-   function updatePosition() {
-  if (!anchorEl) return; // FIX: TS18047
+    function updatePosition() {
+      if (!anchorEl) return;
 
-  const rect = anchorEl.getBoundingClientRect();
-  const scrollY = window.scrollY || window.pageYOffset;
-  const scrollX = window.scrollX || window.pageXOffset;
-  const left = rect.left + scrollX;
-  let top = rect.bottom + scrollY + 6;
-  let transformOrigin = 'top left';
+      const rect = anchorEl.getBoundingClientRect();
+      const scrollY = window.scrollY || window.pageYOffset;
+      const scrollX = window.scrollX || window.pageXOffset;
+      const left = rect.left + scrollX;
+      let top = rect.bottom + scrollY + 6;
+      let transformOrigin = 'top left';
 
-  const viewportHeight = window.innerHeight;
-  const estimatedMenuHeight = menuRef.current ? menuRef.current.offsetHeight : 160;
-  const spaceBelow = viewportHeight - rect.bottom;
-  const spaceAbove = rect.top;
+      const viewportHeight = window.innerHeight;
+      const estimatedMenuHeight = menuRef.current ? menuRef.current.offsetHeight : 160;
+      const spaceBelow = viewportHeight - rect.bottom;
+      const spaceAbove = rect.top;
 
-  if (spaceBelow < estimatedMenuHeight && spaceAbove >= estimatedMenuHeight) {
-    top = rect.top + scrollY - estimatedMenuHeight - 6;
-    transformOrigin = 'bottom left';
-  }
+      if (spaceBelow < estimatedMenuHeight && spaceAbove >= estimatedMenuHeight) {
+        top = rect.top + scrollY - estimatedMenuHeight - 6;
+        transformOrigin = 'bottom left';
+      }
 
-  const viewportWidth = window.innerWidth;
-  const menuWidth = typeof width === 'number' ? width : Number(width) || 200;
+      const viewportWidth = window.innerWidth;
+      const menuWidth = typeof width === 'number' ? width : Number(width) || 200;
 
-  let finalLeft = left;
-  if (left + menuWidth > viewportWidth + scrollX - 8) {
-    finalLeft = Math.max(8 + scrollX, viewportWidth + scrollX - menuWidth - 8);
-  }
+      let finalLeft = left;
+      if (left + menuWidth > viewportWidth + scrollX - 8) {
+        finalLeft = Math.max(8 + scrollX, viewportWidth + scrollX - menuWidth - 8);
+      }
 
-  setPos({ top, left: finalLeft, transformOrigin });
-}
-
+      setPos({ top, left: finalLeft, transformOrigin });
+    }
 
     updatePosition();
     const ro = new ResizeObserver(updatePosition);
@@ -145,6 +145,7 @@ export const useSupplierColumns = ({
   onEdit,
   onDelete,
   onStatusChange,
+  onView,
   onEmailVerificationChange
 }: UseSupplierColumnsProps) => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
@@ -161,11 +162,36 @@ export const useSupplierColumns = ({
 
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
 
+  // Safe category formatter function
+  const formatCategory = (category: string): string => {
+    if (!category || typeof category !== 'string') {
+      return 'No Category';
+    }
+    
+    // Replace underscores with spaces and capitalize first letter of each word
+    return category
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  };
+
   const columns = useMemo(
     () => [
-      { name: 'S.No', selector: (row: Supplier) => row.serialNo, sortable: true, width: '80px' },
-      { name: 'Name', selector: (row: Supplier) => row.Name, sortable: true },
-      { name: 'Email', selector: (row: Supplier) => row.email, sortable: true },
+      { 
+        name: 'S.No', 
+        selector: (row: Supplier) => row.serialNo, 
+        sortable: true, 
+        width: '80px' 
+      },
+      { 
+        name: 'Name', 
+        selector: (row: Supplier) => row.Name, 
+        sortable: true 
+      },
+      { 
+        name: 'Email', 
+        selector: (row: Supplier) => row.email, 
+        sortable: true 
+      },
 
       {
         name: 'Category',
@@ -173,7 +199,7 @@ export const useSupplierColumns = ({
         sortable: true,
         cell: (row: Supplier) => (
           <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-            {row.category.replace(/_/g, ' ')}
+            {formatCategory(row.category)}
           </span>
         )
       },
@@ -268,15 +294,22 @@ export const useSupplierColumns = ({
         cell: (row: Supplier) => (
           <div className="flex space-x-2">
             <button
+              onClick={() => onView?.(row)}
+              className="flex items-center space-x-1 bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded transition duration-200"
+              title="View Category"
+            >
+              <Eye className="w-3 h-3" />
+            </button>
+            <button
               onClick={() => onEdit?.(row)}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded"
             >
               <Edit className="w-3 h-3" />
             </button>
 
             <button
               onClick={() => onDelete?.(row)}
-              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
+              className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
             >
               <Trash2 className="w-3 h-3" />
             </button>

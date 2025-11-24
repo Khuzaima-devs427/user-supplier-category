@@ -4,7 +4,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarInset, SidebarTrigger, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton } from "../components/ui/sidebar";
 import Providers from './providers';
-import { Home, Settings, Users, BarChart3, Folder, Eye, Users2, ChevronDown, Truck } from "lucide-react";
+import { Home, Settings, Users, BarChart3, Folder, Eye, Users2, ChevronDown, Truck ,} from "lucide-react";
 import { useState } from "react";
 
 // CN utility function
@@ -52,6 +52,47 @@ function UsersMenu() {
   );
 }
 
+// Supplier Menu Component with Sub-options
+function SupplierMenu() {
+  const [isSupplierOpen, setIsSupplierOpen] = useState(false);
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton 
+        onClick={() => setIsSupplierOpen(!isSupplierOpen)}
+      >
+        <Truck className="h-4 w-4" />   {/* ✅ Updated main icon */}
+        <span>Suppliers</span>
+        <ChevronDown 
+          className={cn(
+            "ml-auto h-4 w-4 transition-transform",
+            isSupplierOpen ? "rotate-0" : "-rotate-90"
+          )} 
+        />
+      </SidebarMenuButton>
+      
+      {isSupplierOpen && (
+        <SidebarMenuSub>
+          <SidebarMenuSubItem>
+            <SidebarMenuSubButton href="/supplier/supplier-categories">
+              <Folder className="h-4 w-4" />   {/* ✅ Supplier Categories icon */}
+              <span>Supplier Categories</span>
+            </SidebarMenuSubButton>
+          </SidebarMenuSubItem>
+          
+          <SidebarMenuSubItem>
+            <SidebarMenuSubButton href="/supplier/view-suppliers">
+              <Eye className="h-4 w-4" />   {/* ✅ View Suppliers icon */}
+              <span>View Suppliers</span>
+            </SidebarMenuSubButton>
+          </SidebarMenuSubItem>
+        </SidebarMenuSub>
+      )}
+    </SidebarMenuItem>
+  );
+}
+
+
 export default function RootLayout({
   children,
 }: {
@@ -92,15 +133,16 @@ export default function RootLayout({
                     <UsersMenu />
                     
                     {/* Suppliers - Simple Link (No sub-menu) */}
-                    <SidebarMenuItem>
+                    {/* <SidebarMenuItem>
                       <SidebarMenuButton asChild>
                         <a href="/supplier">
                           <Truck className="h-4 w-4" />
                           <span>Suppliers</span>
                         </a>
                       </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    
+                    </SidebarMenuItem> */}
+                    <SupplierMenu/>
+
                     <SidebarMenuItem>
                       <SidebarMenuButton asChild>
                         <a href="/project">

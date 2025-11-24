@@ -1,47 +1,48 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
 
-interface UserFormData {
-  userType: string; // Changed from userCategory to userType to match backend
+interface SupplierFormData {
+  supplierCategory: string;
   firstName: string;
   lastName: string;
   email: string;
   phoneNumber: string;
-  password: string;
-  confirmPassword: string;
   country: string;
-  state: string; // Added state field
+  state: string;
   city: string;
   streetAddress: string;
   houseNumber: string;
   postalCode: string;
 }
 
-interface Category {
+interface SupplierCategory {
   _id: string;
-  role: string;
-  categoryType: string;
+  name: string;
+  description: string;
 }
 
-const AddUserPage = () => {
+const EditSupplierPage = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const supplierId = searchParams.get('id');
+  
   const [isLoading, setIsLoading] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loadingCategories, setLoadingCategories] = useState(true);
-  const [formData, setFormData] = useState<UserFormData>({
-    userType: '', // Changed from userCategory
+  const [isFetching, setIsFetching] = useState(true);
+  const [supplierCategories, setSupplierCategories] = useState<SupplierCategory[]>([]);
+  const [loadingSupplierCategories, setLoadingSupplierCategories] = useState(true);
+  const [formData, setFormData] = useState<SupplierFormData>({
+    supplierCategory: '',
     firstName: '',
     lastName: '',
     email: '',
     phoneNumber: '',
-    password: '',
-    confirmPassword: '',
     country: '',
-    state: '', // Added state
+    state: '',
     city: '',
     streetAddress: '',
     houseNumber: '',
@@ -57,29 +58,115 @@ const AddUserPage = () => {
     { value: 'Pakistan', label: 'Pakistan' },
   ];
 
-  // Fetch user categories from backend - FIXED: Using correct endpoint
+  // Fetch supplier categories from backend
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/user-categories');
+        console.log('🔄 Fetching supplier categories...');
+        const response = await fetch('http://localhost:5000/api/supplier-categories?status=active');
         const result = await response.json();
         
+        console.log('📦 Supplier categories response:', result);
+        
         if (response.ok && result.success) {
-          setCategories(result.data || []);
+          setSupplierCategories(result.data || []);
+          console.log(`✅ Loaded ${result.data?.length || 0} supplier categories`);
         } else {
-          console.error('Failed to fetch categories:', result.message);
-          setCategories([]);
+          console.error('❌ Failed to fetch categories:', result.message);
+          setSupplierCategories([]);
         }
       } catch (error) {
-        console.error('Error fetching categories:', error);
-        setCategories([]);
+        console.error('❌ Error fetching categories:', error);
+        setSupplierCategories([]);
       } finally {
-        setLoadingCategories(false);
+        setLoadingSupplierCategories(false);
       }
     };
 
     fetchCategories();
   }, []);
+
+  // Fetch supplier data when component mounts - FIXED: Using correct endpoint
+  useEffect(() => {
+    const fetchSupplierData = async () => {
+      if (!supplierId) {
+        console.log('❌ No supplier ID provided');
+        setIsFetching(false);
+        return;
+      }
+
+      try {
+        console.log(`🔄 Fetching supplier data for ID: ${supplierId}`);
+        
+        // FIXED: Use the general users endpoint since suppliers are stored in users table
+        const response = await fetch(`http://localhost:5000/api/users/${supplierId}`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch supplier data: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('📦 Supplier data response:', result);
+        
+        if (result.success && result.data) {
+          const supplier = result.data;
+          
+          console.log('🔍 Raw supplier data:', {
+            supplierCategory: supplier.supplierCategory,
+            userType: supplier.userType,
+            address: supplier.address
+          });
+
+          // Handle supplier category - it could be an object (populated) or string (ID)
+          let supplierCategoryValue = '';
+          if (supplier.supplierCategory) {
+            if (typeof supplier.supplierCategory === 'object' && supplier.supplierCategory._id) {
+              supplierCategoryValue = supplier.supplierCategory._id;
+              console.log(`✅ Found populated supplier category: ${supplier.supplierCategory.name}`);
+            } else {
+              supplierCategoryValue = supplier.supplierCategory;
+              console.log(`ℹ️ Supplier category is ID: ${supplierCategoryValue}`);
+            }
+          } else {
+            console.log('❌ No supplier category found for this supplier');
+          }
+
+          // Handle address data
+          const address = supplier.address || {};
+          console.log('🏠 Address data:', address);
+          
+          setFormData({
+            supplierCategory: supplierCategoryValue,
+            firstName: supplier.firstName || '',
+            lastName: supplier.lastName || '',
+            email: supplier.email || '',
+            phoneNumber: supplier.phoneNumber || '',
+            country: address.country || '',
+            state: address.state || '',
+            city: address.city || '',
+            streetAddress: address.streetAddress || '',
+            houseNumber: address.houseNumber || '',
+            postalCode: address.postalCode || ''
+          });
+
+          console.log('✅ Form data set successfully:', {
+            supplierCategory: supplierCategoryValue,
+            firstName: supplier.firstName,
+            email: supplier.email
+          });
+        } else {
+          throw new Error(result.message || 'Invalid supplier data');
+        }
+      } catch (error) {
+        console.error('❌ Error fetching supplier:', error);
+        alert(`Error loading supplier data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    fetchSupplierData();
+  }, [supplierId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -91,117 +178,158 @@ const AddUserPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match!');
-      setIsLoading(false);
+    if (!supplierId) {
+      alert('No supplier ID provided');
       return;
     }
 
+    setIsLoading(true);
     try {
-      // Transform data to match backend schema - FIXED: Using correct field names
-      const userData = {
+      // Transform data to match backend schema
+      const supplierData = {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
-        phoneNumber: formData.phoneNumber, // Changed from phone to phoneNumber
-        password: formData.password,
-        userType: formData.userType, // Changed from category to userType
+        phoneNumber: formData.phoneNumber,
+        supplierCategory: formData.supplierCategory,
         address: {
           country: formData.country,
-          state: formData.state, // Added state
+          state: formData.state,
           city: formData.city,
           streetAddress: formData.streetAddress,
-          houseNumber: formData.houseNumber, // Keep as string (backend expects string)
-          postalCode: formData.postalCode // Keep as string (backend expects string)
+          houseNumber: formData.houseNumber,
+          postalCode: formData.postalCode
         }
       };
 
-      console.log('Sending user data:', userData);
+      console.log('🔄 Updating supplier with data:', {
+        supplierId,
+        supplierData,
+        selectedCategory: formData.supplierCategory
+      });
 
-      // FIXED: Using correct endpoint
-      const response = await fetch('http://localhost:5000/api/users', {
-        method: 'POST',
+      // FIXED: Using the general users endpoint for update
+      const response = await fetch(`http://localhost:5000/api/users/${supplierId}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(userData),
+        body: JSON.stringify(supplierData),
       });
 
       const result = await response.json();
+      console.log('📨 Update response:', result);
 
       if (response.ok && result.success) {
-        // Force immediate refetch of users data
+        console.log('✅ Supplier updated successfully');
+        
+        // Force immediate refetch of suppliers data
         await queryClient.invalidateQueries({ 
-          queryKey: ['users'], 
+          queryKey: ['suppliers'], 
           refetchType: 'active' 
         });
         
-        alert('User created successfully!');
-        router.push('/user/user-view');
+        alert('Supplier updated successfully!');
+        router.push('/supplier/view-suppliers');
       } else {
-        alert(result.message || 'Failed to create user');
+        console.error('❌ Update failed:', result.message);
+        alert(result.message || 'Failed to update supplier');
       }
     } catch (error) {
-      console.error('Error creating user:', error);
-      alert('Error creating user. Please check your connection.');
+      console.error('❌ Error updating supplier:', error);
+      alert(`Error updating supplier: ${error instanceof Error ? error.message : 'Please check your connection.'}`);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleCancel = () => {
-    router.push('/user/user-view');
+    router.push('/supplier/view-suppliers');
   };
+
+  if (isFetching || loadingSupplierCategories) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">
+            {isFetching ? 'Loading supplier data...' : 'Loading categories...'}
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            Supplier ID: {supplierId}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-md">
           {/* Header */}
-          <div className="px-8 py-6 border-b border-gray-200">
-            <h1 className="text-2xl font-bold text-gray-900">Add New User</h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Create a new user account with the form below.
-            </p>
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Edit Supplier</h1>
+                <p className="mt-1 text-sm text-gray-600">
+                  Update supplier information with the form below.
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Supplier ID: {supplierId}
+                </p>
+              </div>
+              <Link
+                href="/supplier/view-suppliers"
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                ← Back to Suppliers
+              </Link>
+            </div>
           </div>
 
+
+
           {/* Form */}
-          <form onSubmit={handleSubmit} className="p-8 space-y-8">
-            {/* User Category */}
-            <div className="w-full">
-              <label htmlFor="userType" className="block text-sm font-medium text-gray-700 mb-2">
-                User Category *
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {/* Supplier Category */}
+            <div>
+              <label htmlFor="supplierCategory" className="block text-sm font-medium text-gray-700 mb-2">
+                Supplier Category *
               </label>
               <select
-                id="userType"
-                name="userType" // Changed from userCategory
-                value={formData.userType}
+                id="supplierCategory"
+                name="supplierCategory"
+                value={formData.supplierCategory}
                 onChange={handleChange}
                 required
-                disabled={loadingCategories}
+                disabled={loadingSupplierCategories}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100"
               >
                 <option value="">
-                  {loadingCategories ? 'Loading categories...' : 'Select User Category'}
+                  {loadingSupplierCategories ? 'Loading categories...' : 'Select Supplier Category'}
                 </option>
-                {categories.map(category => (
+                {supplierCategories.map(category => (
                   <option key={category._id} value={category._id}>
-                    {category.role} ({category.categoryType})
+                    {category.name}
                   </option>
                 ))}
               </select>
-              {categories.length === 0 && !loadingCategories && (
+              {supplierCategories.length === 0 && !loadingSupplierCategories && (
                 <p className="mt-1 text-sm text-red-600">
-                  No categories available. Please add categories first.
+                  No supplier categories available. Please add supplier categories first.
+                </p>
+              )}
+              {formData.supplierCategory && (
+                <p className="mt-1 text-sm text-green-600">
+                  Selected category: {supplierCategories.find(cat => cat._id === formData.supplierCategory)?.name || 'Unknown'}
                 </p>
               )}
             </div>
 
             {/* Personal Information Section */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 w-full">
-              <div className="w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
                 <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
                   First Name *
                 </label>
@@ -217,7 +345,7 @@ const AddUserPage = () => {
                 />
               </div>
 
-              <div className="w-full">
+              <div>
                 <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
                   Last Name *
                 </label>
@@ -235,8 +363,8 @@ const AddUserPage = () => {
             </div>
 
             {/* Contact Information Section */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 w-full">
-              <div className="w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                   Email Address *
                 </label>
@@ -252,7 +380,7 @@ const AddUserPage = () => {
                 />
               </div>
 
-              <div className="w-full">
+              <div>
                 <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-2">
                   Phone Number
                 </label>
@@ -268,46 +396,9 @@ const AddUserPage = () => {
               </div>
             </div>
 
-            {/* Password Section */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 w-full">
-              <div className="w-full">
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                  Password *
-                </label>
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  minLength={6}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Enter password"
-                />
-              </div>
-
-              <div className="w-full">
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirm Password *
-                </label>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  required
-                  minLength={6}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Confirm password"
-                />
-              </div>
-            </div>
-
             {/* Address Information Section */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 w-full">
-              <div className="w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
                 <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-2">
                   Country *
                 </label>
@@ -328,7 +419,7 @@ const AddUserPage = () => {
                 </select>
               </div>
 
-              <div className="w-full">
+              <div>
                 <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-2">
                   State/Province *
                 </label>
@@ -345,8 +436,8 @@ const AddUserPage = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 w-full">
-              <div className="w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
                 <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
                   City *
                 </label>
@@ -362,7 +453,7 @@ const AddUserPage = () => {
                 />
               </div>
 
-              <div className="w-full">
+              <div>
                 <label htmlFor="streetAddress" className="block text-sm font-medium text-gray-700 mb-2">
                   Street Address *
                 </label>
@@ -379,13 +470,13 @@ const AddUserPage = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 w-full">
-              <div className="w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
                 <label htmlFor="houseNumber" className="block text-sm font-medium text-gray-700 mb-2">
                   House Number *
                 </label>
                 <input
-                  type="text" // Changed to text to match backend (string)
+                  type="text"
                   id="houseNumber"
                   name="houseNumber"
                   value={formData.houseNumber}
@@ -396,12 +487,12 @@ const AddUserPage = () => {
                 />
               </div>
 
-              <div className="w-full">
+              <div>
                 <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 mb-2">
                   Postal Code *
                 </label>
                 <input
-                  type="text" // Changed to text to match backend (string)
+                  type="text"
                   id="postalCode"
                   name="postalCode"
                   value={formData.postalCode}
@@ -414,20 +505,20 @@ const AddUserPage = () => {
             </div>
 
             {/* Form Actions */}
-            <div className="flex justify-end space-x-4 pt-8 border-t border-gray-200 w-full">
+            <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-8 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                disabled={isLoading || loadingCategories || categories.length === 0}
-                className="px-8 py-3 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading || loadingSupplierCategories || supplierCategories.length === 0 || !formData.supplierCategory}
+                className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? 'Creating...' : 'Create User'}
+                {isLoading ? 'Updating...' : 'Update Supplier'}
               </button>
             </div>
           </form>
@@ -437,4 +528,4 @@ const AddUserPage = () => {
   );
 };
 
-export default AddUserPage;
+export default EditSupplierPage;

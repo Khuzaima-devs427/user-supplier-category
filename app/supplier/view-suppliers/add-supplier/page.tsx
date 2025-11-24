@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface SupplierFormData {
-  supplierCategory: string;
+  supplierCategory: string; // Only supplierCategory needed
   firstName: string;
   lastName: string;
   email: string;
@@ -12,15 +13,25 @@ interface SupplierFormData {
   password: string;
   confirmPassword: string;
   country: string;
+  state: string;
   city: string;
   streetAddress: string;
   houseNumber: string;
   postalCode: string;
 }
 
+interface SupplierCategory {
+  _id: string;
+  name: string;
+  description: string;
+}
+
 const AddSupplierPage = () => {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
+  const [supplierCategories, setSupplierCategories] = useState<SupplierCategory[]>([]);
+  const [loadingSupplierCategories, setLoadingSupplierCategories] = useState(true);
   const [formData, setFormData] = useState<SupplierFormData>({
     supplierCategory: '',
     firstName: '',
@@ -30,27 +41,45 @@ const AddSupplierPage = () => {
     password: '',
     confirmPassword: '',
     country: '',
+    state: '',
     city: '',
     streetAddress: '',
     houseNumber: '',
     postalCode: '',
   });
 
-  const supplierCategories = [
-    { value: 'mobile_supplier', label: 'Mobile Supplier' },
-    { value: 'pc_supplier', label: 'PC Supplier' },
-    { value: 'laptop_supplier', label: 'Laptop Supplier' },
-    { value: 'charger_supplier', label: 'Charger Supplier' },
-    { value: 'other', label: 'Other' },
+  const countries = [
+    { value: 'United States', label: 'United States' },
+    { value: 'Canada', label: 'Canada' },
+    { value: 'United Kingdom', label: 'United Kingdom' },
+    { value: 'Australia', label: 'Australia' },
+    { value: 'India', label: 'India' },
+    { value: 'Pakistan', label: 'Pakistan' },
   ];
 
-  const countries = [
-    { value: 'us', label: 'United States' },
-    { value: 'ca', label: 'Canada' },
-    { value: 'uk', label: 'United Kingdom' },
-    { value: 'au', label: 'Australia' },
-    { value: 'in', label: 'India' },
-  ];
+  // Fetch supplier categories only
+  useEffect(() => {
+    const fetchSupplierCategories = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/supplier-categories');
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          setSupplierCategories(result.data || []);
+        } else {
+          console.error('Failed to fetch supplier categories:', result.message);
+          setSupplierCategories([]);
+        }
+      } catch (error) {
+        console.error('Error fetching supplier categories:', error);
+        setSupplierCategories([]);
+      } finally {
+        setLoadingSupplierCategories(false);
+      }
+    };
+
+    fetchSupplierCategories();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -72,24 +101,25 @@ const AddSupplierPage = () => {
     }
 
     try {
-      // Transform data to match backend schema
+      // Only send supplierCategory - backend will auto-assign userType
       const supplierData = {
-        Name: {
-          firstName: formData.firstName,
-          lastName: formData.lastName
-        },
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         email: formData.email,
+        phoneNumber: formData.phoneNumber,
         password: formData.password,
-        phone: formData.phoneNumber,
-        category: formData.supplierCategory,
+        supplierCategory: formData.supplierCategory, // Only this category needed
         address: {
           country: formData.country,
+          state: formData.state,
           city: formData.city,
           streetAddress: formData.streetAddress,
-          houseNumber: parseInt(formData.houseNumber) || 0,
-          postalCode: parseInt(formData.postalCode) || 0
+          houseNumber: formData.houseNumber,
+          postalCode: formData.postalCode
         }
       };
+
+      console.log('Sending supplier data:', supplierData);
 
       const response = await fetch('http://localhost:5000/api/suppliers', {
         method: 'POST',
@@ -101,9 +131,14 @@ const AddSupplierPage = () => {
 
       const result = await response.json();
 
-      if (response.ok) {
+      if (response.ok && result.success) {
+        await queryClient.invalidateQueries({ 
+          queryKey: ['suppliers'], 
+          refetchType: 'active' 
+        });
+        
         alert('Supplier created successfully!');
-        router.push('/supplier');
+        router.push('/supplier/view-suppliers');
       } else {
         alert(result.message || 'Failed to create supplier');
       }
@@ -116,7 +151,7 @@ const AddSupplierPage = () => {
   };
 
   const handleCancel = () => {
-    router.push('/supplier');
+    router.push('/supplier/view-suppliers');
   };
 
   return (
@@ -127,13 +162,13 @@ const AddSupplierPage = () => {
           <div className="px-6 py-4 border-b border-gray-200">
             <h1 className="text-2xl font-bold text-gray-900">Add New Supplier</h1>
             <p className="mt-1 text-sm text-gray-600">
-              Create a new Supplier account with the form below.
+              Create a new supplier account with the form below.
             </p>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            {/* Supplier Category */}
+            {/* Supplier Category Only */}
             <div>
               <label htmlFor="supplierCategory" className="block text-sm font-medium text-gray-700 mb-2">
                 Supplier Category *
@@ -144,17 +179,26 @@ const AddSupplierPage = () => {
                 value={formData.supplierCategory}
                 onChange={handleChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                disabled={loadingSupplierCategories}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100"
               >
-                <option value="">Select Supplier Category</option>
+                <option value="">
+                  {loadingSupplierCategories ? 'Loading categories...' : 'Select Supplier Category'}
+                </option>
                 {supplierCategories.map(category => (
-                  <option key={category.value} value={category.value}>
-                    {category.label}
+                  <option key={category._id} value={category._id}>
+                    {category.name}
                   </option>
                 ))}
               </select>
+              {supplierCategories.length === 0 && !loadingSupplierCategories && (
+                <p className="mt-1 text-sm text-red-600">
+                  No supplier categories available. Please add supplier categories first.
+                </p>
+              )}
             </div>
 
+            {/* Rest of the form remains the same */}
             {/* Personal Information Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -210,7 +254,7 @@ const AddSupplierPage = () => {
 
               <div>
                 <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number *
+                  Phone Number
                 </label>
                 <input
                   type="tel"
@@ -218,7 +262,6 @@ const AddSupplierPage = () => {
                   name="phoneNumber"
                   value={formData.phoneNumber}
                   onChange={handleChange}
-                  required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   placeholder="Enter phone number"
                 />
@@ -286,6 +329,24 @@ const AddSupplierPage = () => {
               </div>
 
               <div>
+                <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-2">
+                  State/Province *
+                </label>
+                <input
+                  type="text"
+                  id="state"
+                  name="state"
+                  value={formData.state}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="Enter state or province"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
                 <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
                   City *
                 </label>
@@ -300,9 +361,7 @@ const AddSupplierPage = () => {
                   placeholder="Enter city"
                 />
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="streetAddress" className="block text-sm font-medium text-gray-700 mb-2">
                   Street Address *
@@ -318,40 +377,40 @@ const AddSupplierPage = () => {
                   placeholder="Enter street address"
                 />
               </div>
+            </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="houseNumber" className="block text-sm font-medium text-gray-700 mb-2">
                   House Number *
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   id="houseNumber"
                   name="houseNumber"
                   value={formData.houseNumber}
                   onChange={handleChange}
                   required
-                  min="1"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   placeholder="Enter house number"
                 />
               </div>
-            </div>
 
-            <div>
-              <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 mb-2">
-                Postal Code *
-              </label>
-              <input
-                type="number"
-                id="postalCode"
-                name="postalCode"
-                value={formData.postalCode}
-                onChange={handleChange}
-                required
-                min="1"
-                className="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                placeholder="Enter postal code"
-              />
+              <div>
+                <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 mb-2">
+                  Postal Code *
+                </label>
+                <input
+                  type="text"
+                  id="postalCode"
+                  name="postalCode"
+                  value={formData.postalCode}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="Enter postal code"
+                />
+              </div>
             </div>
 
             {/* Form Actions */}
@@ -365,7 +424,7 @@ const AddSupplierPage = () => {
               </button>
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || loadingSupplierCategories || supplierCategories.length === 0}
                 className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Creating...' : 'Create Supplier'}

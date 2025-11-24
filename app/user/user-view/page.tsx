@@ -8,19 +8,20 @@ import { useUserColumns } from '../../_components/_hooks/useUserColumns';
 import StatusFilter, { EmailStatusFilter } from '../../_components/_filters/StatusFilter';
 import DateRangeFilter from '../../_components/_filters/DateRangeFilter';
 import DeleteConfirmationModal from '../../_components/_modals/DeleteConfirmationModal';
+import ViewDetailsModal from '../../_components/_view-modal/ViewDetailsModal';
 
-// Interface for backend response
+// Updated interface for backend response with new model
 interface BackendUser {
-  id: string;
+  _id: string;
   firstName: string;
   lastName: string;
   email: string;
-  phone: string;
-  category: string;
-  isActive: boolean;
+  phoneNumber: string;
+  userType: any; // Reference to UserCategory
+  address?: any;
+  isBlocked: boolean;
   isEmailVerified: boolean;
   createdAt: string;
-  lastLogin?: string;
 }
 
 const UsersPage = () => {
@@ -34,9 +35,28 @@ const UsersPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [deletingUser, setDeletingUser] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [updatingEmailVerification, setUpdatingEmailVerification] = useState<string | null>(null);
+  const [viewingUser, setViewingUser] = useState<any>(null);
   const limit = 10;
 
-  // Fetch users data
+  // Safe category name getter
+  const getCategoryName = (userType: any): string => {
+    if (!userType) return 'No Category';
+    
+    if (typeof userType === 'string') {
+      return userType;
+    }
+    
+    // Handle populated userType object
+    if (typeof userType === 'object') {
+      return userType.role || userType._id || 'Unnamed Category';
+    }
+    
+    return 'No Category';
+  };
+
+  // Fetch users data - FIXED: Using correct endpoint
   const { data: usersData, isLoading, error } = useQuery({
     queryKey: ['users', search, statusFilter, emailStatusFilter, startDate, endDate, currentPage],
     queryFn: async () => {
@@ -44,7 +64,7 @@ const UsersPage = () => {
         page: currentPage.toString(),
         limit: limit.toString(),
         ...(search && { search }),
-        ...(statusFilter && { isActive: statusFilter === 'active' ? 'true' : 'false' }),
+        ...(statusFilter && { isBlocked: statusFilter === 'inactive' ? 'true' : 'false' }), // Changed from isActive to isBlocked
         ...(emailStatusFilter && { isEmailVerified: emailStatusFilter === 'verified' ? 'true' : 'false' }),
         ...(startDate && { startDate }),
         ...(endDate && { endDate }),
@@ -64,7 +84,92 @@ const UsersPage = () => {
     },
   });
 
-  // Delete user function
+  // Update user status - FIXED: Using correct endpoint and field
+  const updateUserStatus = async (userId: string, status: 'active' | 'inactive'): Promise<void> => {
+    setUpdatingStatus(userId);
+    
+    try {
+      console.log(`Updating user ${userId} status to: ${status}`);
+      
+      const response = await fetch(`http://localhost:5000/api/users/${userId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          isBlocked: status === 'inactive' // Changed from isActive to isBlocked
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to update user status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to update user status');
+      }
+
+      await queryClient.invalidateQueries({ 
+        queryKey: ['users'], 
+        refetchType: 'active'
+      });
+      
+      console.log(`User ${userId} status successfully updated to: ${status}`);
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      alert(`Failed to update user status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
+  // Update email verification status - FIXED: Check if this endpoint exists
+  const updateEmailVerification = async (userId: string, isEmailVerified: boolean): Promise<void> => {
+    setUpdatingEmailVerification(userId);
+    
+    try {
+      console.log(`Updating user ${userId} email verification to: ${isEmailVerified}`);
+      
+      // NOTE: This endpoint might not exist in your backend yet
+      const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
+        method: 'PUT', // Using update endpoint instead
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          isEmailVerified 
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to update email verification: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to update email verification');
+      }
+
+      await queryClient.invalidateQueries({ 
+        queryKey: ['users'], 
+        refetchType: 'active'
+      });
+      
+      console.log(`User ${userId} email verification successfully updated to: ${isEmailVerified}`);
+    } catch (error) {
+      console.error('Error updating email verification:', error);
+      alert(`Failed to update email verification: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setUpdatingEmailVerification(null);
+    }
+  };
+
+  // Delete user function - FIXED: Using correct endpoint
   const deleteUser = async (userId: string): Promise<void> => {
     const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
       method: 'DELETE',
@@ -84,9 +189,14 @@ const UsersPage = () => {
     }
   };
 
-  // Handle edit user - navigates to edit page
+  // Handle edit user
   const handleEditUser = (user: any) => {
     router.push(`/user/user-view/edit-user?id=${user.id}`);
+  };
+
+  // Handle view user
+  const handleViewUser = (user: any) => {
+    setViewingUser(user);
   };
 
   // Handle delete user confirmation
@@ -97,13 +207,12 @@ const UsersPage = () => {
     try {
       await deleteUser(deletingUser.id);
       
-      // Invalidate and refetch users data
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      await queryClient.invalidateQueries({ 
+        queryKey: ['users'], 
+        refetchType: 'active'
+      });
       
-      // Close the modal
       setDeletingUser(null);
-      
-      // Show success message
       console.log('User deleted successfully');
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -113,26 +222,40 @@ const UsersPage = () => {
     }
   };
 
+  // Handle status change
+  const handleStatusChange = (user: any, status: 'active' | 'inactive') => {
+    updateUserStatus(user.id, status);
+  };
+
+  // Handle email verification change
+  const handleEmailVerificationChange = (user: any, isEmailVerified: boolean) => {
+    updateEmailVerification(user.id, isEmailVerified);
+  };
+
   // Extract data from backend response
   const users: BackendUser[] = usersData?.data || [];
   const totalUsers = usersData?.pagination?.totalItems || 0;
 
   console.log('Processed users:', users);
 
-  // Transform backend data to table format
+  // Transform backend data to table format - FIXED: Using correct field names
   const dataWithSerial = useMemo(() => {
     return users.map((user: BackendUser, index: number) => ({
-      id: user.id,
+      id: user._id, // Changed from user.id to user._id
       serialNo: (currentPage - 1) * limit + (index + 1),
       name: `${user.firstName} ${user.lastName}`,
       email: user.email,
-      phone: user.phone,
-      status: user.isActive ? 'active' : 'inactive',
+      phone: user.phoneNumber, // Changed from user.phone to user.phoneNumber
+      status: user.isBlocked ? 'inactive' : 'active', // Inverted logic for isBlocked
       createdAt: user.createdAt,
-      lastLogin: user.lastLogin || 'Never',
-      category: user.category,
-      isActive: user.isActive,
-      isEmailVerified: user.isEmailVerified
+      category: getCategoryName(user.userType), // Changed from user.category to user.userType
+      isEmailVerified: user.isEmailVerified,
+      // Add original data for view modal
+      firstName: user.firstName,
+      lastName: user.lastName,
+      isActive: !user.isBlocked, // Calculate isActive from isBlocked
+      originalCategory: user.userType, // Keep original for view modal
+      address: user.address
     }));
   }, [users, currentPage, limit]);
 
@@ -141,13 +264,16 @@ const UsersPage = () => {
     router.push('/user/user-view/add-user');
   };
 
-  const columns = useUserColumns(
-    handleEditUser,
-    (user) => {
+  const columns = useUserColumns({
+    onEdit: handleEditUser,
+    onDelete: (user) => {
       console.log('Delete user:', user);
       setDeletingUser(user);
-    }
-  );
+    },
+    onView: handleViewUser,
+    onStatusChange: handleStatusChange,
+    onEmailVerificationChange: handleEmailVerificationChange
+  });
 
   // Add error handling
   if (error) {
@@ -237,6 +363,14 @@ const UsersPage = () => {
         itemName={deletingUser?.name}
         isLoading={isDeleting}
         type="user"
+      />
+
+      {/* View Details Modal */}
+      <ViewDetailsModal
+        isOpen={!!viewingUser}
+        onClose={() => setViewingUser(null)}
+        type="user"
+        data={viewingUser}
       />
     </div>
   );
