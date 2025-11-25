@@ -3,9 +3,21 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
+import LeafletMap from '../../../_components/_leaflet_map/map';
+
+interface Address {
+  country?: string;
+  state?: string;
+  city?: string;
+  streetAddress?: string;
+  houseNumber?: string;
+  postalCode?: string;
+  latitude?: number;
+  longitude?: number;
+}
 
 interface UserFormData {
-  userType: string; // Changed from userCategory to userType to match backend
+  userType: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -13,7 +25,7 @@ interface UserFormData {
   password: string;
   confirmPassword: string;
   country: string;
-  state: string; // Added state field
+  state: string;
   city: string;
   streetAddress: string;
   houseNumber: string;
@@ -32,8 +44,9 @@ const AddUserPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [selectedLocation, setSelectedLocation] = useState<Address>({});
   const [formData, setFormData] = useState<UserFormData>({
-    userType: '', // Changed from userCategory
+    userType: '',
     firstName: '',
     lastName: '',
     email: '',
@@ -41,7 +54,7 @@ const AddUserPage = () => {
     password: '',
     confirmPassword: '',
     country: '',
-    state: '', // Added state
+    state: '',
     city: '',
     streetAddress: '',
     houseNumber: '',
@@ -57,7 +70,7 @@ const AddUserPage = () => {
     { value: 'Pakistan', label: 'Pakistan' },
   ];
 
-  // Fetch user categories from backend - FIXED: Using correct endpoint
+  // Fetch user categories from backend
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -81,6 +94,21 @@ const AddUserPage = () => {
     fetchCategories();
   }, []);
 
+  const handleLocationSelect = (address: Address) => {
+    setSelectedLocation(address);
+    
+    // Auto-fill the form fields with the selected address
+    setFormData(prev => ({
+      ...prev,
+      country: address.country || prev.country,
+      state: address.state || prev.state,
+      city: address.city || prev.city,
+      streetAddress: address.streetAddress || prev.streetAddress,
+      houseNumber: address.houseNumber || prev.houseNumber,
+      postalCode: address.postalCode || prev.postalCode,
+    }));
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -100,27 +128,33 @@ const AddUserPage = () => {
     }
 
     try {
-      // Transform data to match backend schema - FIXED: Using correct field names
+      // Transform data to match backend schema
       const userData = {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
-        phoneNumber: formData.phoneNumber, // Changed from phone to phoneNumber
+        phoneNumber: formData.phoneNumber,
         password: formData.password,
-        userType: formData.userType, // Changed from category to userType
+        userType: formData.userType,
         address: {
           country: formData.country,
-          state: formData.state, // Added state
+          state: formData.state,
           city: formData.city,
           streetAddress: formData.streetAddress,
-          houseNumber: formData.houseNumber, // Keep as string (backend expects string)
-          postalCode: formData.postalCode // Keep as string (backend expects string)
+          houseNumber: formData.houseNumber,
+          postalCode: formData.postalCode,
+          // Include coordinates if available
+          ...(selectedLocation.latitude && selectedLocation.longitude && {
+            coordinates: {
+              latitude: selectedLocation.latitude,
+              longitude: selectedLocation.longitude
+            }
+          })
         }
       };
 
       console.log('Sending user data:', userData);
 
-      // FIXED: Using correct endpoint
       const response = await fetch('http://localhost:5000/api/users', {
         method: 'POST',
         headers: {
@@ -176,7 +210,7 @@ const AddUserPage = () => {
               </label>
               <select
                 id="userType"
-                name="userType" // Changed from userCategory
+                name="userType"
                 value={formData.userType}
                 onChange={handleChange}
                 required
@@ -306,126 +340,146 @@ const AddUserPage = () => {
             </div>
 
             {/* Address Information Section */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 w-full">
-              <div className="w-full">
-                <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-2">
-                  Country *
-                </label>
-                <select
-                  id="country"
-                  name="country"
-                  value={formData.country}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                >
-                  <option value="">Select Country</option>
-                  {countries.map(country => (
-                    <option key={country.value} value={country.value}>
-                      {country.label}
-                    </option>
-                  ))}
-                </select>
+            <div className="space-y-6">
+              <div className="border-b border-gray-200 pb-4">
+                <h3 className="text-lg font-medium text-gray-900">Address Details</h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  Fill in the address details manually or use the map below to select a location.
+                </p>
               </div>
 
-              <div className="w-full">
-                <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-2">
-                  State/Province *
-                </label>
-                <input
-                  type="text"
-                  id="state"
-                  name="state"
-                  value={formData.state}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Enter state or province"
-                />
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 w-full">
+                <div className="w-full">
+                  <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-2">
+                    Country *
+                  </label>
+                  <select
+                    id="country"
+                    name="country"
+                    value={formData.country}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  >
+                    <option value="">Select Country</option>
+                    {countries.map(country => (
+                      <option key={country.value} value={country.value}>
+                        {country.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="w-full">
+                  <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-2">
+                    State/Province *
+                  </label>
+                  <input
+                    type="text"
+                    id="state"
+                    name="state"
+                    value={formData.state}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="Enter state or province"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 w-full">
+                <div className="w-full">
+                  <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
+                    City *
+                  </label>
+                  <input
+                    type="text"
+                    id="city"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="Enter city"
+                  />
+                </div>
+
+                <div className="w-full">
+                  <label htmlFor="streetAddress" className="block text-sm font-medium text-gray-700 mb-2">
+                    Street Address *
+                  </label>
+                  <input
+                    type="text"
+                    id="streetAddress"
+                    name="streetAddress"
+                    value={formData.streetAddress}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="Enter street address"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 w-full">
+                <div className="w-full">
+                  <label htmlFor="houseNumber" className="block text-sm font-medium text-gray-700 mb-2">
+                    House Number *
+                  </label>
+                  <input
+                    type="text"
+                    id="houseNumber"
+                    name="houseNumber"
+                    value={formData.houseNumber}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="Enter house number"
+                  />
+                </div>
+
+                <div className="w-full">
+                  <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 mb-2">
+                    Postal Code *
+                  </label>
+                  <input
+                    type="text"
+                    id="postalCode"
+                    name="postalCode"
+                    value={formData.postalCode}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="Enter postal code"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 w-full">
-              <div className="w-full">
-                <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
-                  City *
-                </label>
-                <input
-                  type="text"
-                  id="city"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Enter city"
-                />
-              </div>
-
-              <div className="w-full">
-                <label htmlFor="streetAddress" className="block text-sm font-medium text-gray-700 mb-2">
-                  Street Address *
-                </label>
-                <input
-                  type="text"
-                  id="streetAddress"
-                  name="streetAddress"
-                  value={formData.streetAddress}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Enter street address"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 w-full">
-              <div className="w-full">
-                <label htmlFor="houseNumber" className="block text-sm font-medium text-gray-700 mb-2">
-                  House Number *
-                </label>
-                <input
-                  type="text" // Changed to text to match backend (string)
-                  id="houseNumber"
-                  name="houseNumber"
-                  value={formData.houseNumber}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Enter house number"
-                />
-              </div>
-
-              <div className="w-full">
-                <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 mb-2">
-                  Postal Code *
-                </label>
-                <input
-                  type="text" // Changed to text to match backend (string)
-                  id="postalCode"
-                  name="postalCode"
-                  value={formData.postalCode}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Enter postal code"
-                />
-              </div>
+            {/* Location Map Section */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Location Map</h3>
+              
+              <LeafletMap 
+                onLocationSelect={handleLocationSelect}
+                initialAddress={selectedLocation}
+              />
             </div>
 
             {/* Form Actions */}
-            <div className="flex justify-end space-x-4 pt-8 border-t border-gray-200 w-full">
+            {/* className="flex justify-end space-x-4 pt-8 border-t border-gray-200 w-full" */}
+            <div className = "flex justify-end space-x-4 pt-6 w-full">
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-8 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isLoading || loadingCategories || categories.length === 0}
-                className="px-8 py-3 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Creating...' : 'Create User'}
               </button>

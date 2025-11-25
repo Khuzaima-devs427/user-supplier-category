@@ -4,20 +4,34 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
+import LeafletMap from '../../../_components/_leaflet_map/map';
+
+interface Address {
+  country?: string;
+  state?: string;
+  city?: string;
+  streetAddress?: string;
+  houseNumber?: string;
+  postalCode?: string;
+  latitude?: number;
+  longitude?: number;
+}
 
 interface UserFormData {
   firstName: string;
   lastName: string;
   email: string;
-  phoneNumber: string; // Changed from phone to phoneNumber
-  userType: string; // Changed from category to userType
+  phoneNumber: string;
+  userType: string;
   address: {
     country: string;
-    state: string; // Added state
+    state: string;
     city: string;
     streetAddress: string;
-    houseNumber: string; // Changed to string
-    postalCode: string; // Changed to string
+    houseNumber: string;
+    postalCode: string;
+    latitude?: number;
+    longitude?: number;
   };
 }
 
@@ -37,19 +51,20 @@ const EditUserPage = () => {
   const [isFetching, setIsFetching] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [selectedLocation, setSelectedLocation] = useState<Address>({});
   const [formData, setFormData] = useState<UserFormData>({
     firstName: '',
     lastName: '',
     email: '',
-    phoneNumber: '', // Changed from phone
-    userType: '', // Changed from category
+    phoneNumber: '',
+    userType: '',
     address: {
       country: '',
-      state: '', // Added state
+      state: '',
       city: '',
       streetAddress: '',
-      houseNumber: '', // Changed to string
-      postalCode: '' // Changed to string
+      houseNumber: '',
+      postalCode: ''
     }
   });
 
@@ -62,7 +77,7 @@ const EditUserPage = () => {
     { value: 'Pakistan', label: 'Pakistan' },
   ];
 
-  // Fetch user categories from backend - FIXED: Using correct endpoint
+  // Fetch user categories from backend
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -86,7 +101,27 @@ const EditUserPage = () => {
     fetchCategories();
   }, []);
 
-  // Fetch user data when component mounts - FIXED: Using correct field names
+  const handleLocationSelect = (address: Address) => {
+    setSelectedLocation(address);
+    
+    // Auto-fill the form fields with the selected address
+    setFormData(prev => ({
+      ...prev,
+      address: {
+        ...prev.address,
+        country: address.country || prev.address.country,
+        state: address.state || prev.address.state,
+        city: address.city || prev.address.city,
+        streetAddress: address.streetAddress || prev.address.streetAddress,
+        houseNumber: address.houseNumber || prev.address.houseNumber,
+        postalCode: address.postalCode || prev.address.postalCode,
+        ...(address.latitude && { latitude: address.latitude }),
+        ...(address.longitude && { longitude: address.longitude })
+      }
+    }));
+  };
+
+  // Fetch user data when component mounts
   useEffect(() => {
     const fetchUserData = async () => {
       if (!userId) {
@@ -108,27 +143,57 @@ const EditUserPage = () => {
           let userTypeValue = '';
           if (user.userType) {
             if (typeof user.userType === 'object' && user.userType._id) {
-              userTypeValue = user.userType._id; // Use the ID from populated userType
+              userTypeValue = user.userType._id;
             } else {
-              userTypeValue = user.userType; // It's already an ID string
+              userTypeValue = user.userType;
             }
           }
 
-          setFormData({
+          // Set form data with user data
+          const userFormData = {
             firstName: user.firstName || '',
             lastName: user.lastName || '',
             email: user.email || '',
-            phoneNumber: user.phoneNumber || '', // Changed from phone
-            userType: userTypeValue, // Changed from category
-            address: user.address || {
-              country: '',
-              state: '', // Added state
-              city: '',
-              streetAddress: '',
-              houseNumber: '', // Changed to string
-              postalCode: '' // Changed to string
+            phoneNumber: user.phoneNumber || '',
+            userType: userTypeValue,
+            address: {
+              country: user.address?.country || '',
+              state: user.address?.state || '',
+              city: user.address?.city || '',
+              streetAddress: user.address?.streetAddress || '',
+              houseNumber: user.address?.houseNumber || '',
+              postalCode: user.address?.postalCode || '',
+              latitude: user.address?.coordinates?.latitude || user.address?.latitude,
+              longitude: user.address?.coordinates?.longitude || user.address?.longitude
             }
-          });
+          };
+
+          setFormData(userFormData);
+
+          // Set selected location for map
+          if (user.address?.coordinates?.latitude && user.address?.coordinates?.longitude) {
+            setSelectedLocation({
+              latitude: user.address.coordinates.latitude,
+              longitude: user.address.coordinates.longitude,
+              country: user.address.country,
+              state: user.address.state,
+              city: user.address.city,
+              streetAddress: user.address.streetAddress,
+              houseNumber: user.address.houseNumber,
+              postalCode: user.address.postalCode
+            });
+          } else if (user.address?.latitude && user.address?.longitude) {
+            setSelectedLocation({
+              latitude: user.address.latitude,
+              longitude: user.address.longitude,
+              country: user.address.country,
+              state: user.address.state,
+              city: user.address.city,
+              streetAddress: user.address.streetAddress,
+              houseNumber: user.address.houseNumber,
+              postalCode: user.address.postalCode
+            });
+          }
         }
       } catch (error) {
         console.error('Error fetching user:', error);
@@ -150,7 +215,7 @@ const EditUserPage = () => {
         ...prev,
         address: {
           ...prev.address,
-          [addressField]: value // Always string, no number conversion
+          [addressField]: value
         }
       }));
     } else {
@@ -167,19 +232,21 @@ const EditUserPage = () => {
 
     setIsLoading(true);
     try {
-      // FIXED: Using correct field names matching backend
       const userData = {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
-        phoneNumber: formData.phoneNumber, // Changed from phone
-        userType: formData.userType, // Changed from category
-        address: formData.address
+        phoneNumber: formData.phoneNumber,
+        userType: formData.userType,
+        address: {
+          ...formData.address,
+          ...(selectedLocation.latitude && { latitude: selectedLocation.latitude }),
+          ...(selectedLocation.longitude && { longitude: selectedLocation.longitude })
+        }
       };
 
       console.log('Updating user with data:', userData);
 
-      // FIXED: Using correct endpoint
       const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
         method: 'PUT',
         headers: {
@@ -191,7 +258,6 @@ const EditUserPage = () => {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        // Force immediate refetch of users data
         await queryClient.invalidateQueries({ 
           queryKey: ['users'], 
           refetchType: 'active' 
@@ -311,7 +377,7 @@ const EditUserPage = () => {
                 <input
                   type="tel"
                   id="phoneNumber"
-                  name="phoneNumber" // Changed from phone
+                  name="phoneNumber"
                   value={formData.phoneNumber}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
@@ -327,7 +393,7 @@ const EditUserPage = () => {
               </label>
               <select
                 id="userType"
-                name="userType" // Changed from category
+                name="userType"
                 value={formData.userType}
                 onChange={handleChange}
                 required
@@ -383,7 +449,7 @@ const EditUserPage = () => {
                   <input
                     type="text"
                     id="state"
-                    name="address.state" // Added state field
+                    name="address.state"
                     value={formData.address.state}
                     onChange={handleChange}
                     required
@@ -433,7 +499,7 @@ const EditUserPage = () => {
                     House Number *
                   </label>
                   <input
-                    type="text" // Changed to text
+                    type="text"
                     id="houseNumber"
                     name="address.houseNumber"
                     value={formData.address.houseNumber}
@@ -449,7 +515,7 @@ const EditUserPage = () => {
                     Postal Code *
                   </label>
                   <input
-                    type="text" // Changed to text
+                    type="text"
                     id="postalCode"
                     name="address.postalCode"
                     value={formData.address.postalCode}
@@ -462,19 +528,29 @@ const EditUserPage = () => {
               </div>
             </div>
 
+            {/* Location Map Section */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Location Map</h3>
+              
+              <LeafletMap 
+                onLocationSelect={handleLocationSelect}
+                initialAddress={selectedLocation}
+              />
+            </div>
+
             {/* Form Actions */}
-            <div className="flex justify-end space-x-4 pt-8 border-t border-gray-200 w-full">
+            <div className="flex justify-end space-x-4 pt-8 w-full">
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-8 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isLoading || categories.length === 0}
-                className="px-8 py-3 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Updating...' : 'Update User'}
               </button>

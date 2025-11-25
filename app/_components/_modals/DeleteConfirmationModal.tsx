@@ -306,7 +306,7 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-[3px]"
+      className="fixed inset-0  bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-[3px]"
       onClick={handleBackdropClick}
     >
       <div className="bg-white rounded-2xl w-full max-w-md transform transition-all">
