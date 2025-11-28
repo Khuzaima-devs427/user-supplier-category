@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-
+import Image from 'next/image';
+import Link from 'next/link';
 interface SupplierCategoryFormData {
   name: string;
   description: string;
   productCategories: string[];
   productType: 'new' | 'scrap';
-  image?: string;
+  image?: File | null;
 }
 
 const AddSupplierCategoryPage = () => {
@@ -19,10 +20,13 @@ const AddSupplierCategoryPage = () => {
   const [formData, setFormData] = useState<SupplierCategoryFormData>({
     name: '',
     description: '',
-    productCategories: [], // Keep as array for backend compatibility
+    productCategories: [],
     productType: 'new',
-    image: ''
+    image: null
   });
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Predefined product categories matching backend enum
   const productCategoriesOptions = [
@@ -37,7 +41,6 @@ const AddSupplierCategoryPage = () => {
     const { name, value } = e.target;
     
     if (name === 'productCategories') {
-      // For product categories, store as array with single item
       setFormData(prev => ({
         ...prev,
         productCategories: value ? [value] : []
@@ -57,13 +60,72 @@ const AddSupplierCategoryPage = () => {
     }));
   };
 
+  // Handle file selection
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setFormData(prev => ({
-        ...prev,
-        image: file.name
-      }));
+      processImageFile(file);
+    }
+  };
+
+  // Process the image file and create preview
+  const processImageFile = (file: File) => {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size must be less than 10MB');
+      return;
+    }
+
+    // Create preview URL
+    const previewUrl = URL.createObjectURL(file);
+    setImagePreview(previewUrl);
+    
+    // Update form data with File object
+    setFormData(prev => ({
+      ...prev,
+      image: file
+    }));
+  };
+
+  // Handle drag and drop events
+  const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      processImageFile(files[0]);
+    }
+  };
+
+  // Remove image preview
+  const handleRemoveImage = () => {
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview); // Clean up memory
+    }
+    setImagePreview(null);
+    setFormData(prev => ({
+      ...prev,
+      image: null
+    }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -79,12 +141,34 @@ const AddSupplierCategoryPage = () => {
         return;
       }
 
+      // Create FormData object for file upload
+      const submitFormData = new FormData();
+      
+      // Append text fields
+      submitFormData.append('name', formData.name);
+      submitFormData.append('description', formData.description);
+      submitFormData.append('productType', formData.productType);
+      
+      // Append product categories as JSON string
+      submitFormData.append('productCategories', JSON.stringify(formData.productCategories));
+      
+      // Append image file if exists
+      if (formData.image) {
+        submitFormData.append('image', formData.image);
+      }
+
+      console.log('🔄 Submitting form data:', {
+        name: formData.name,
+        description: formData.description,
+        productCategories: formData.productCategories,
+        productType: formData.productType,
+        hasImage: !!formData.image
+      });
+
       const response = await fetch('http://localhost:5000/api/supplier-categories', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
+        body: submitFormData, // Use FormData instead of JSON
+        // Don't set Content-Type header - let browser set it with boundary
       });
 
       const result = await response.json();
@@ -101,8 +185,9 @@ const AddSupplierCategoryPage = () => {
           description: '',
           productCategories: [],
           productType: 'new',
-          image: ''
+          image: null
         });
+        setImagePreview(null);
         router.push('/supplier/supplier-categories');
       } else {
         alert(result.message || 'Failed to create supplier category');
@@ -124,12 +209,31 @@ const AddSupplierCategoryPage = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-md">
           {/* Header */}
-          <div className="px-8 py-6 border-b border-gray-200">
+          {/* <div className="px-8 py-6 border-b border-gray-200">
             <h1 className="text-2xl font-bold text-gray-900">Add New Supplier Category</h1>
             <p className="mt-1 text-sm text-gray-600">
               Create a new supplier category to organize suppliers by their product types and specialties.
             </p>
+          </div> */}
+
+           <div className="px-8 py-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Add New Supplier Category</h1>
+                <p className="mt-1 text-sm text-gray-600">
+                Create a new supplier category to organize suppliers by their product types.
+                </p>
+              </div>
+              <Link
+                href="/supplier/supplier-categories"
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                ← Back to Supplier
+              </Link>
+            </div>
           </div>
+
+
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-8 space-y-8">
@@ -264,47 +368,85 @@ const AddSupplierCategoryPage = () => {
             {/* Category Image */}
             <div className="w-full">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category Image ({formData.image ? '1/1' : '0/1'})
+                Category Image
               </label>
-              <div className="flex items-center justify-center w-full">
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors duration-200">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <svg
-                      className="w-8 h-8 mb-4 text-gray-500"
-                      aria-hidden="true"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 20 16"
-                    >
-                      <path
-                        stroke="currentColor"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"
-                      />
-                    </svg>
-                    <p className="mb-2 text-sm text-gray-500">
-                      <span className="font-semibold">Click to upload</span> or drag and drop
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      PNG, JPG, GIF up to 10MB
+              
+              {imagePreview ? (
+                // Image Preview
+                <div className="relative">
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-sm font-medium text-gray-700">Image Preview</span>
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="text-red-600 hover:text-red-800 text-sm font-medium"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <div className="flex justify-center">
+                      <div className="relative w-48 h-48 border border-gray-200 rounded-lg overflow-hidden">
+                        <Image
+                          src={imagePreview}
+                          alt="Category preview"
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-center text-sm text-gray-600 mt-2">
+                      {formData.image?.name}
                     </p>
                   </div>
-                  <input
-                    id="image"
-                    name="image"
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                  />
-                </label>
-              </div>
-              {formData.image && (
-                <p className="mt-2 text-sm text-green-600">
-                  Selected: {formData.image}
-                </p>
+                </div>
+              ) : (
+                // Upload Area
+                <div className="flex items-center justify-center w-full">
+                  <label
+                    className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors duration-200 ${
+                      isDragging 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-300 bg-gray-50 hover:bg-gray-100'
+                    }`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                  >
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <svg
+                        className="w-8 h-8 mb-4 text-gray-500"
+                        aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 20 16"
+                      >
+                        <path
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"
+                        />
+                      </svg>
+                      <p className="mb-2 text-sm text-gray-500">
+                        <span className="font-semibold">Click to upload</span> or drag and drop
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        PNG, JPG, GIF up to 10MB
+                      </p>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      id="image"
+                      name="image"
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                    />
+                  </label>
+                </div>
               )}
             </div>
 
@@ -313,14 +455,14 @@ const AddSupplierCategoryPage = () => {
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-8 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="px-8 py-3 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Creating...' : 'Create Category'}
               </button>

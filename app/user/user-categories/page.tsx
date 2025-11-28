@@ -1,4 +1,3 @@
-// app/user/user-categories/page.tsx
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -8,7 +7,7 @@ import DataGridWrapper from '../../_components/_data-grid/DataGridWrapper';
 import { useCategoryColumns } from '../../_components/_hooks/useCategoryColumns';
 import DeleteConfirmationModal from '../../_components/_modals/DeleteConfirmationModal';
 import ViewCategoryModal from '../../_components/_view-modal/ViewCategoryModal';
-import { TypeFilter } from '../../_components/_filters/StatusFilter';
+import { TypeFilter, StatusFilter } from '../../_components/_filters/StatusFilter';
 import DateRangeFilter from '../../_components/_filters/DateRangeFilter';
 
 // Updated interface to match your actual backend model
@@ -37,7 +36,7 @@ const CategoriesPage = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const limit = 10;
 
-  // Fetch categories data - ADDED STATUS FILTER
+  // Fetch categories data
   const { data: categoriesData, isLoading, error } = useQuery({
     queryKey: ['categories', search, typeFilter, statusFilter, startDate, endDate, currentPage],
     queryFn: async () => {
@@ -46,7 +45,7 @@ const CategoriesPage = () => {
         limit: limit.toString(),
         ...(search && { search }),
         ...(typeFilter && { categoryType: typeFilter }),
-        ...(statusFilter && { status: statusFilter }), // ADDED STATUS FILTER
+        ...(statusFilter && { status: statusFilter }),
         ...(startDate && { startDate }),
         ...(endDate && { endDate }),
       });
@@ -104,7 +103,7 @@ const CategoriesPage = () => {
     try {
       await deleteCategory(deletingCategory.id);
       
-      // FIXED: Better cache invalidation
+      // Better cache invalidation
       await Promise.all([
         queryClient.invalidateQueries({ 
           queryKey: ['categories'], 
@@ -126,52 +125,44 @@ const CategoriesPage = () => {
   };
 
   // Handle status change
-  const handleStatusChange = async (category: any, status: 'active' | 'inactive') => {
-    try {
-      console.log('Update user category status:', category.id, status);
-      
-      const response = await fetch(`http://localhost:5000/api/user-categories/${category.id}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status }),
-      });
+// Update the handleStatusChange function to use correct ID
+const handleStatusChange = async (category: any, status: 'active' | 'inactive') => {
+  try {
+    console.log('🔄 Update user category status:', category.id, status);
+    
+    const response = await fetch(`http://localhost:5000/api/user-categories/${category.id}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status }),
+    });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to update category status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.message || 'Failed to update category status');
-      }
-
-      // FIXED: Better cache invalidation
-      await Promise.all([
-        queryClient.invalidateQueries({ 
-          queryKey: ['categories'], 
-          refetchType: 'all'
-        }),
-        queryClient.refetchQueries({
-          queryKey: ['categories']
-        })
-      ]);
-      
-      console.log('Category status updated successfully');
-    } catch (error) {
-      console.error('Error updating category status:', error);
-      alert(`Failed to update category status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to update category status: ${response.status}`);
     }
-  };
 
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to update category status');
+    }
+
+    // Invalidate and refetch
+    await queryClient.invalidateQueries({ queryKey: ['categories'] });
+    
+    console.log('✅ Category status updated successfully');
+  } catch (error) {
+    console.error('❌ Error updating category status:', error);
+    alert(`Failed to update category status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
   // Extract data from backend response
   const categories: BackendCategory[] = categoriesData?.data || [];
   const totalCategories = categoriesData?.pagination?.totalItems || 0;
 
-  // Transform backend data to table format - SIMPLIFIED
+  // Transform backend data to table format
   const dataWithSerial = useMemo(() => {
     return categories.map((category: BackendCategory, index: number) => ({
       id: category._id,
@@ -179,7 +170,7 @@ const CategoriesPage = () => {
       role: category.role,
       type: category.categoryType,
       description: category.description,
-      status: category.status, // Backend now provides status field
+      status: category.status,
       createdAt: category.createdAt,
       updatedAt: category.updatedAt,
     }));
@@ -208,16 +199,12 @@ const CategoriesPage = () => {
         placeholder="All Types"
       />
 
-      {/* ADDED STATUS FILTER */}
-      <select
+      {/* FIXED: Using imported StatusFilter component */}
+      <StatusFilter
         value={statusFilter}
-        onChange={(e) => setStatusFilter(e.target.value)}
-        className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-      >
-        <option value="">All Status</option>
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
-      </select>
+        onChange={setStatusFilter}
+        placeholder="All Status"
+      />
  
       <DateRangeFilter
         startDate={startDate}

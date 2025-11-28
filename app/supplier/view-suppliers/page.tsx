@@ -284,7 +284,7 @@ const SuppliersPage = () => {
       <StatusFilter
         value={statusFilter}
         onChange={setStatusFilter}
-        placeholder="Filter by status"
+        placeholder="All Status"
       />
       <EmailStatusFilter
         value={emailStatusFilter}

@@ -8,7 +8,7 @@ import DataGridWrapper from '../../_components/_data-grid/DataGridWrapper';
 import { useSupplierCategoryColumns } from '../../_components/_hooks/useSupplierCategoryColumns';
 import DeleteConfirmationModal from '../../_components/_modals/DeleteConfirmationModal';
 import ViewSupplierCategoryModal from '../../_components/_view-modal/ViewSupplierCategoryModal';
-import { TypeFilter } from '../../_components/_filters/StatusFilter';
+import { ProductTypesFilter, StatusFilter } from '../../_components/_filters/StatusFilter';
 import DateRangeFilter from '../../_components/_filters/DateRangeFilter';
 
 interface BackendSupplierCategory {
@@ -17,6 +17,7 @@ interface BackendSupplierCategory {
   description: string;
   productCategories: string[];
   productType: 'new' | 'scrap';
+  isBlocked: boolean; 
   status: 'active' | 'inactive';
   createdAt: string;
   updatedAt: string;
@@ -26,7 +27,7 @@ const SupplierCategoriesPage = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [productTypeFilter, setProductTypeFilter] = useState('');
+  const [productTypeFilter, setproductTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -126,65 +127,86 @@ const SupplierCategoriesPage = () => {
   };
 
   // Handle status change - FIXED: Better cache invalidation
-  const handleStatusChange = async (category: any, status: 'active' | 'inactive') => {
-    try {
-      console.log('Update supplier category status:', category.id, status);
-      
-      const response = await fetch(`http://localhost:5000/api/supplier-categories/${category.id}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status }),
-      });
+// Handle status change - FIXED: Use correct endpoint
+const handleStatusChange = async (category: any, status: 'active' | 'inactive') => {
+  try {
+    console.log('Update supplier category status:', category.id, status);
+    
+    // Use the correct ID field from backend
+    const categoryId = category.id || category._id;
+    
+    // FIX: Use the correct endpoint with /status
+    const response = await fetch(`http://localhost:5000/api/supplier-categories/${categoryId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status }),
+    });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to update supplier category status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.message || 'Failed to update supplier category status');
-      }
-
-      // FIXED: Better cache invalidation
-      await Promise.all([
-        queryClient.invalidateQueries({ 
-          queryKey: ['supplier-categories'], 
-          refetchType: 'all'
-        }),
-        queryClient.refetchQueries({
-          queryKey: ['supplier-categories']
-        })
-      ]);
-      
-      console.log('Supplier category status updated successfully');
-    } catch (error) {
-      console.error('Error updating supplier category status:', error);
-      alert(`Failed to update supplier category status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to update supplier category status: ${response.status}`);
     }
-  };
+
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to update supplier category status');
+    }
+
+    // FIXED: Better cache invalidation
+    await Promise.all([
+      queryClient.invalidateQueries({ 
+        queryKey: ['supplier-categories'], 
+        refetchType: 'all'
+      }),
+      queryClient.refetchQueries({
+        queryKey: ['supplier-categories']
+      })
+    ]);
+    
+    console.log('Supplier category status updated successfully');
+  } catch (error) {
+    console.error('Error updating supplier category status:', error);
+    alert(`Failed to update supplier category status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
 
   // Extract data from backend response
   const categories: BackendSupplierCategory[] = categoriesData?.data || [];
   const totalCategories = categoriesData?.pagination?.totalItems || 0;
 
   // Transform backend data to table format
-  const dataWithSerial = useMemo(() => {
-    return categories.map((category: BackendSupplierCategory, index: number) => ({
+// Transform backend data to table format - FIXED: Handle isBlocked to status conversion
+const dataWithSerial = useMemo(() => {
+  console.log('Raw categories data:', categories);
+  
+  return categories.map((category: BackendSupplierCategory, index: number) => {
+    // FIX: Convert isBlocked to status
+    const status = category.isBlocked ? 'inactive' : 'active';
+    
+    const transformed = {
       id: category._id,
       serialNo: (currentPage - 1) * limit + (index + 1),
       name: category.name,
       description: category.description,
       productCategories: category.productCategories,
       productType: category.productType,
-      status: category.status,
+      status: status, // Use converted status
       createdAt: category.createdAt,
       updatedAt: category.updatedAt,
-    }));
-  }, [categories, currentPage, limit]);
+    };
+    
+    console.log(`Category ${index}:`, {
+      originalIsBlocked: category.isBlocked,
+      convertedStatus: transformed.status,
+      hasStatus: !!transformed.status
+    });
+    
+    return transformed;
+  });
+}, [categories, currentPage, limit]);
 
   // Handle Add Supplier Category button click
   const handleAddCategory = () => {
@@ -201,27 +223,18 @@ const SupplierCategoriesPage = () => {
     onView: handleViewCategory
   });
 
-  const SupplierCategoryFilters = (
+  const SupplierCategoryFilters =
     <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
-      <select
+       <ProductTypesFilter
         value={productTypeFilter}
-        onChange={(e) => setProductTypeFilter(e.target.value)}
-        className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-      >
-        <option value="">All Product Types</option>
-        <option value="new">New Products</option>
-        <option value="scrap">Scrap Products</option>
-      </select>
-
-      <select
+        onChange={setproductTypeFilter}
+        placeholder="All Types"
+      />
+         <StatusFilter
         value={statusFilter}
-        onChange={(e) => setStatusFilter(e.target.value)}
-        className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-      >
-        <option value="">All Status</option>
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
-      </select>
+        onChange={setStatusFilter}
+        placeholder="All Users"
+      />
  
       <DateRangeFilter
         startDate={startDate}
@@ -232,7 +245,7 @@ const SupplierCategoriesPage = () => {
       
       <button
         onClick={() => {
-          setProductTypeFilter('');
+          setproductTypeFilter('');
           setStatusFilter('');
           setStartDate('');
           setEndDate('');
@@ -244,7 +257,7 @@ const SupplierCategoriesPage = () => {
         Clear Filters
       </button>
     </div>
-  );
+
 
   // Add error handling
   if (error) {

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import LeafletMap from '../../../_components/_leaflet_map/map';
-
+import Link from 'next/link';
 interface Address {
   country?: string;
   state?: string;
@@ -194,11 +194,28 @@ const AddSupplierPage = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-md">
           {/* Header */}
-          <div className="px-8 py-6 border-b border-gray-200">
+          {/* <div className="px-8 py-6 border-b border-gray-200">
             <h1 className="text-2xl font-bold text-gray-900">Add New Supplier</h1>
             <p className="mt-1 text-sm text-gray-600">
               Create a new supplier account with the form below.
             </p>
+          </div> */}
+
+          <div className="px-8 py-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Add New Supplier</h1>
+                <p className="mt-1 text-sm text-gray-600">
+                Create a new supplier account with the form below.
+                </p>
+              </div>
+              <Link
+                href="/supplier/view-suppliers"
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                ← Back to Supplier
+              </Link>
+            </div>
           </div>
 
           {/* Form */}

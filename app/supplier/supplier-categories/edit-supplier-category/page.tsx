@@ -1,15 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-
+import Link from 'next/link';
 interface SupplierCategoryFormData {
   name: string;
   description: string;
   productCategories: string[];
   productType: 'new' | 'scrap';
-  image?: string;
+  image?: File | string | null;
 }
 
 interface SupplierCategory {
@@ -35,8 +35,12 @@ const EditSupplierCategoryPage = () => {
     description: '',
     productCategories: [],
     productType: 'new',
-    image: ''
+    image: null
   });
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [existingImage, setExistingImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const categoryId = searchParams.get('id');
 
@@ -80,6 +84,11 @@ const EditSupplierCategoryPage = () => {
             productType: category.productType,
             image: category.image || ''
           });
+
+          // Set existing image if available
+          if (category.image) {
+            setExistingImage(category.image);
+          }
         } else {
           alert(result.message || 'Failed to fetch category data');
           router.push('/supplier/supplier-categories');
@@ -119,14 +128,85 @@ const EditSupplierCategoryPage = () => {
     }));
   };
 
+  // Handle file selection
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setFormData(prev => ({
-        ...prev,
-        image: file.name
-      }));
+      processImageFile(file);
     }
+  };
+
+  // Process the image file and create preview
+  const processImageFile = (file: File) => {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size must be less than 10MB');
+      return;
+    }
+
+    // Create preview URL
+    const previewUrl = URL.createObjectURL(file);
+    setImagePreview(previewUrl);
+    
+    // Update form data with File object
+    setFormData(prev => ({
+      ...prev,
+      image: file
+    }));
+
+    // Clear existing image when new image is selected
+    setExistingImage(null);
+  };
+
+  // Handle drag and drop events
+  const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      processImageFile(files[0]);
+    }
+  };
+
+  // Remove image preview
+  const handleRemoveImage = () => {
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview); // Clean up memory
+    }
+    setImagePreview(null);
+    setFormData(prev => ({
+      ...prev,
+      image: ''
+    }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Remove existing image
+  const handleRemoveExistingImage = () => {
+    setExistingImage(null);
+    setFormData(prev => ({
+      ...prev,
+      image: ''
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -147,14 +227,34 @@ const EditSupplierCategoryPage = () => {
         return;
       }
 
-      console.log('🔄 Updating category with data:', formData);
+      console.log('🔄 Updating category with data:', {
+        name: formData.name,
+        description: formData.description,
+        productCategories: formData.productCategories,
+        productType: formData.productType,
+        hasNewImage: formData.image instanceof File
+      });
+
+      // Create FormData object for file upload
+      const submitFormData = new FormData();
+      
+      // Append text fields
+      submitFormData.append('name', formData.name);
+      submitFormData.append('description', formData.description);
+      submitFormData.append('productType', formData.productType);
+      
+      // Append product categories as JSON string
+      submitFormData.append('productCategories', JSON.stringify(formData.productCategories));
+      
+      // Append image file if it's a new File object
+      if (formData.image instanceof File) {
+        submitFormData.append('image', formData.image);
+      }
 
       const response = await fetch(`http://localhost:5000/api/supplier-categories/${categoryId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
+        body: submitFormData, // Use FormData instead of JSON
+        // Don't set Content-Type header - let browser set it with boundary
       });
 
       const result = await response.json();
@@ -203,12 +303,31 @@ const EditSupplierCategoryPage = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-md">
           {/* Header */}
-          <div className="px-8 py-6 border-b border-gray-200">
+          {/* <div className="px-8 py-6 border-b border-gray-200">
             <h1 className="text-2xl font-bold text-gray-900">Edit Supplier Category</h1>
             <p className="mt-1 text-sm text-gray-600">
               Update the supplier category information below.
             </p>
+          </div> */}
+
+
+          <div className="px-8 py-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Edit Supplier Category</h1>
+                <p className="mt-1 text-sm text-gray-600">
+                 Update the supplier category information below.
+                </p>
+              </div>
+              <Link
+                href="/supplier/supplier-categories"
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                ← Back to Supplier
+              </Link>
+            </div>
           </div>
+
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-8 space-y-8">
@@ -343,48 +462,157 @@ const EditSupplierCategoryPage = () => {
             {/* Category Image */}
             <div className="w-full">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category Image ({formData.image ? '1/1' : '0/1'})
+                Category Image
               </label>
-              <div className="flex items-center justify-center w-full">
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors duration-200">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <svg
-                      className="w-8 h-8 mb-4 text-gray-500"
-                      aria-hidden="true"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 20 16"
-                    >
-                      <path
-                        stroke="currentColor"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"
-                      />
-                    </svg>
-                    <p className="mb-2 text-sm text-gray-500">
-                      <span className="font-semibold">Click to upload</span> or drag and drop
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      PNG, JPG, GIF up to 10MB
+              
+              {imagePreview ? (
+                // New Image Preview
+                <div className="relative">
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-sm font-medium text-gray-700">New Image Preview</span>
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="text-red-600 hover:text-red-800 text-sm font-medium"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <div className="flex justify-center">
+                      <div className="relative w-48 h-48 border border-gray-200 rounded-lg overflow-hidden">
+                        {/* Using regular img tag instead of Next.js Image */}
+                        <img
+                          src={imagePreview}
+                          alt="New category preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-center text-sm text-gray-600 mt-2">
+                      {formData.image instanceof File ? formData.image.name : formData.image}
                     </p>
                   </div>
-                  <input
-                    id="image"
-                    name="image"
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                  />
-                </label>
-              </div>
-              {formData.image && (
-                <p className="mt-2 text-sm text-green-600">
-                  Selected: {formData.image}
-                </p>
+                </div>
+              ) : (
+                // Upload Area
+                <div className="flex items-center justify-center w-full">
+                  <label
+                    className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors duration-200 ${
+                      isDragging 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-300 bg-gray-50 hover:bg-gray-100'
+                    }`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                  >
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <svg
+                        className="w-8 h-8 mb-4 text-gray-500"
+                        aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 20 16"
+                      >
+                        <path
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"
+                        />
+                      </svg>
+                      <p className="mb-2 text-sm text-gray-500">
+                        <span className="font-semibold">Click to upload</span> or drag and drop
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        PNG, JPG, GIF up to 10MB
+                      </p>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      id="image"
+                      name="image"
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                    />
+                  </label>
+                </div>
               )}
+
+              {/* Existing Image Display */}
+{existingImage && !imagePreview && (
+  <div className="mt-6">
+    <div className="flex items-center gap-4">
+      {/* Image with hover X icon */}
+      <div className="relative group">
+        <div className="relative w-32 h-32 rounded-lg overflow-hidden">
+          {existingImage ? (
+            <>
+              <img
+                src={existingImage}
+                alt="Current category image"
+                className="w-full h-full object-cover" 
+                onError={(e) => {
+                  console.error('Image failed to load:', existingImage);
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+              
+              {/* X icon - only shows on hover */}
+              <button
+                type="button"
+                onClick={handleRemoveExistingImage}
+                className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-all duration-200 opacity-0 group-hover:opacity-100 z-10"
+                title="Remove image"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center justify-center w-full h-full bg-gray-100 rounded-lg">
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-2 text-gray-400">
+                  <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <p className="text-sm text-gray-600 font-medium">No image</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Delete button on the right side */}
+      <button
+        type="button"
+        onClick={handleRemoveExistingImage}
+        className="text-red-600 hover:text-red-800 text-sm font-medium flex items-center gap-1 px-3 py-2 border border-red-200 rounded-md hover:bg-red-50 transition-colors whitespace-nowrap"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+        Delete Image
+      </button>
+    </div>
+  </div>
+)}
+              {/* Image Status */}
+              <div className="mt-4 text-sm text-gray-600">
+                {existingImage && !imagePreview ? (
+                  <p>✅ Current image: <span className="font-medium">{existingImage}</span></p>
+                ) : imagePreview ? (
+                  <p>🔄 New image selected: <span className="font-medium">{formData.image instanceof File ? formData.image.name : formData.image}</span></p>
+                ) : (
+                  <p>📷 No image selected</p>
+                )}
+              </div>
             </div>
 
             {/* Form Actions */}
@@ -392,14 +620,14 @@ const EditSupplierCategoryPage = () => {
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-8 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="px-8 py-3 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Updating...' : 'Update Category'}
               </button>
