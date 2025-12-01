@@ -5,12 +5,21 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import Link from 'next/link';
+import { clientService } from '../../../app/utils/api-client';
+
 interface SupplierCategoryFormData {
   name: string;
   description: string;
   productCategories: string[];
   productType: 'new' | 'scrap';
   image?: File | null;
+}
+
+// API Response interface
+interface ApiResponse<T = any> {
+  success: boolean;
+  message: string;
+  data: T;
 }
 
 const AddSupplierCategoryPage = () => {
@@ -129,6 +138,7 @@ const AddSupplierCategoryPage = () => {
     }
   };
 
+  // UPDATED: Handle form submission using axios
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -165,15 +175,16 @@ const AddSupplierCategoryPage = () => {
         hasImage: !!formData.image
       });
 
-      const response = await fetch('http://localhost:5000/api/supplier-categories', {
-        method: 'POST',
-        body: submitFormData, // Use FormData instead of JSON
-        // Don't set Content-Type header - let browser set it with boundary
+      // UPDATED: Using clientService.post() with FormData
+      const response = await clientService.post<ApiResponse>('/supplier-categories', submitFormData, {
+        headers: {
+          'Content-Type': 'multipart/form-data', // Important for file uploads
+        },
       });
 
-      const result = await response.json();
+      const result = response.data;
 
-      if (response.ok && result.success) {
+      if (result.success) {
         await queryClient.invalidateQueries({ 
           queryKey: ['supplier-categories'], 
           refetchType: 'active' 
@@ -193,7 +204,7 @@ const AddSupplierCategoryPage = () => {
         alert(result.message || 'Failed to create supplier category');
       }
     } catch (error) {
-      console.error('Error creating supplier category:', error);
+      console.error('❌ Error creating supplier category:', error);
       alert('Error creating supplier category. Please check your connection.');
     } finally {
       setIsLoading(false);
@@ -209,19 +220,12 @@ const AddSupplierCategoryPage = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-md">
           {/* Header */}
-          {/* <div className="px-8 py-6 border-b border-gray-200">
-            <h1 className="text-2xl font-bold text-gray-900">Add New Supplier Category</h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Create a new supplier category to organize suppliers by their product types and specialties.
-            </p>
-          </div> */}
-
-           <div className="px-8 py-6 border-b border-gray-200">
+          <div className="px-8 py-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Add New Supplier Category</h1>
                 <p className="mt-1 text-sm text-gray-600">
-                Create a new supplier category to organize suppliers by their product types.
+                  Create a new supplier category to organize suppliers by their product types.
                 </p>
               </div>
               <Link
@@ -232,8 +236,6 @@ const AddSupplierCategoryPage = () => {
               </Link>
             </div>
           </div>
-
-
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-8 space-y-8">

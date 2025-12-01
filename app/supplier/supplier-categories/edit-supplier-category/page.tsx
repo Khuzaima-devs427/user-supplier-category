@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
+import { clientService } from '../../../app/utils/api-client';
+
 interface SupplierCategoryFormData {
   name: string;
   description: string;
@@ -22,6 +24,13 @@ interface SupplierCategory {
   status: 'active' | 'inactive';
   createdAt: string;
   updatedAt: string;
+}
+
+// API Response interface
+interface ApiResponse<T = any> {
+  success: boolean;
+  message: string;
+  data: T;
 }
 
 const EditSupplierCategoryPage = () => {
@@ -66,15 +75,12 @@ const EditSupplierCategoryPage = () => {
         setIsFetching(true);
         console.log('🔄 Fetching category data for ID:', categoryId);
         
-        const response = await fetch(`http://localhost:5000/api/supplier-categories/${categoryId}`);
+        // UPDATED: Using clientService instead of fetch
+        const response = await clientService.get<ApiResponse<SupplierCategory>>(`/supplier-categories/${categoryId}`);
         
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log('✅ Category data received:', result);
+        console.log('✅ Category data received:', response.data);
         
+        const result = response.data;
         if (result.success) {
           const category: SupplierCategory = result.data;
           setFormData({
@@ -209,6 +215,7 @@ const EditSupplierCategoryPage = () => {
     }));
   };
 
+  // UPDATED: Handle form submission using axios
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -251,16 +258,21 @@ const EditSupplierCategoryPage = () => {
         submitFormData.append('image', formData.image);
       }
 
-      const response = await fetch(`http://localhost:5000/api/supplier-categories/${categoryId}`, {
-        method: 'PUT',
-        body: submitFormData, // Use FormData instead of JSON
-        // Don't set Content-Type header - let browser set it with boundary
-      });
+      // UPDATED: Using clientService.put() instead of fetch
+      const response = await clientService.put<ApiResponse>(
+        `/supplier-categories/${categoryId}`,
+        submitFormData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
 
-      const result = await response.json();
+      const result = response.data;
       console.log('✅ Update response:', result);
 
-      if (response.ok && result.success) {
+      if (result.success) {
         await queryClient.invalidateQueries({ 
           queryKey: ['supplier-categories'], 
           refetchType: 'active' 
@@ -303,20 +315,12 @@ const EditSupplierCategoryPage = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-md">
           {/* Header */}
-          {/* <div className="px-8 py-6 border-b border-gray-200">
-            <h1 className="text-2xl font-bold text-gray-900">Edit Supplier Category</h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Update the supplier category information below.
-            </p>
-          </div> */}
-
-
           <div className="px-8 py-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Edit Supplier Category</h1>
                 <p className="mt-1 text-sm text-gray-600">
-                 Update the supplier category information below.
+                  Update the supplier category information below.
                 </p>
               </div>
               <Link
@@ -327,7 +331,6 @@ const EditSupplierCategoryPage = () => {
               </Link>
             </div>
           </div>
-
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-8 space-y-8">
@@ -481,7 +484,6 @@ const EditSupplierCategoryPage = () => {
                     </div>
                     <div className="flex justify-center">
                       <div className="relative w-48 h-48 border border-gray-200 rounded-lg overflow-hidden">
-                        {/* Using regular img tag instead of Next.js Image */}
                         <img
                           src={imagePreview}
                           alt="New category preview"
@@ -544,65 +546,66 @@ const EditSupplierCategoryPage = () => {
               )}
 
               {/* Existing Image Display */}
-{existingImage && !imagePreview && (
-  <div className="mt-6">
-    <div className="flex items-center gap-4">
-      {/* Image with hover X icon */}
-      <div className="relative group">
-        <div className="relative w-32 h-32 rounded-lg overflow-hidden">
-          {existingImage ? (
-            <>
-              <img
-                src={existingImage}
-                alt="Current category image"
-                className="w-full h-full object-cover" 
-                onError={(e) => {
-                  console.error('Image failed to load:', existingImage);
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-              
-              {/* X icon - only shows on hover */}
-              <button
-                type="button"
-                onClick={handleRemoveExistingImage}
-                className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-all duration-200 opacity-0 group-hover:opacity-100 z-10"
-                title="Remove image"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </>
-          ) : (
-            <div className="flex items-center justify-center w-full h-full bg-gray-100 rounded-lg">
-              <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-2 text-gray-400">
-                  <svg fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <p className="text-sm text-gray-600 font-medium">No image</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+              {existingImage && !imagePreview && (
+                <div className="mt-6">
+                  <div className="flex items-center gap-4">
+                    {/* Image with hover X icon */}
+                    <div className="relative group">
+                      <div className="relative w-32 h-32 rounded-lg overflow-hidden">
+                        {existingImage ? (
+                          <>
+                            <img
+                              src={existingImage}
+                              alt="Current category image"
+                              className="w-full h-full object-cover" 
+                              onError={(e) => {
+                                console.error('Image failed to load:', existingImage);
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                            
+                            {/* X icon - only shows on hover */}
+                            <button
+                              type="button"
+                              onClick={handleRemoveExistingImage}
+                              className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-all duration-200 opacity-0 group-hover:opacity-100 z-10"
+                              title="Remove image"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </>
+                        ) : (
+                          <div className="flex items-center justify-center w-full h-full bg-gray-100 rounded-lg">
+                            <div className="text-center">
+                              <div className="w-16 h-16 mx-auto mb-2 text-gray-400">
+                                <svg fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                              <p className="text-sm text-gray-600 font-medium">No image</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
-      {/* Delete button on the right side */}
-      <button
-        type="button"
-        onClick={handleRemoveExistingImage}
-        className="text-red-600 hover:text-red-800 text-sm font-medium flex items-center gap-1 px-3 py-2 border border-red-200 rounded-md hover:bg-red-50 transition-colors whitespace-nowrap"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-        Delete Image
-      </button>
-    </div>
-  </div>
-)}
+                    {/* Delete button on the right side */}
+                    <button
+                      type="button"
+                      onClick={handleRemoveExistingImage}
+                      className="text-red-600 hover:text-red-800 text-sm font-medium flex items-center gap-1 px-3 py-2 border border-red-200 rounded-md hover:bg-red-50 transition-colors whitespace-nowrap"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Delete Image
+                    </button>
+                  </div>
+                </div>
+              )}
+              
               {/* Image Status */}
               <div className="mt-4 text-sm text-gray-600">
                 {existingImage && !imagePreview ? (

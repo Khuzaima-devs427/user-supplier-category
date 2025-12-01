@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
 import LeafletMap from '../../../_components/_leaflet_map/map';
+import { clientService } from '../../../app/utils/api-client';
 
 interface Address {
   country?: string;
@@ -39,6 +40,45 @@ interface Category {
   _id: string;
   role: string;
   categoryType: string;
+}
+
+// API Response interfaces
+interface CategoriesResponse {
+  success: boolean;
+  message: string;
+  data: Category[];
+}
+
+interface UserResponse {
+  success: boolean;
+  message: string;
+  data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
+    userType: any; // Can be string ID or populated object
+    address: {
+      country: string;
+      state: string;
+      city: string;
+      streetAddress: string;
+      houseNumber: string;
+      postalCode: string;
+      coordinates?: {
+        latitude: number;
+        longitude: number;
+      };
+      latitude?: number;
+      longitude?: number;
+    };
+  };
+}
+
+interface UpdateUserResponse {
+  success: boolean;
+  message: string;
+  data: any;
 }
 
 const EditUserPage = () => {
@@ -77,21 +117,25 @@ const EditUserPage = () => {
     { value: 'Pakistan', label: 'Pakistan' },
   ];
 
-  // Fetch user categories from backend
+  // Fetch user categories from backend - UPDATED: Using clientService
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/user-categories');
-        const result = await response.json();
+        console.log('🔄 Fetching user categories...');
         
-        if (response.ok && result.success) {
+        // UPDATED: Using clientService instead of fetch
+        const response = await clientService.get<CategoriesResponse>('/user-categories');
+        const result = response.data;
+        
+        if (result.success) {
           setCategories(result.data || []);
+          console.log(`✅ Loaded ${result.data?.length || 0} user categories`);
         } else {
-          console.error('Failed to fetch categories:', result.message);
+          console.error('❌ Failed to fetch categories:', result.message);
           setCategories([]);
         }
       } catch (error) {
-        console.error('Error fetching categories:', error);
+        console.error('❌ Error fetching categories:', error);
         setCategories([]);
       } finally {
         setLoadingCategories(false);
@@ -121,21 +165,24 @@ const EditUserPage = () => {
     }));
   };
 
-  // Fetch user data when component mounts
+  // Fetch user data when component mounts - UPDATED: Using clientService
   useEffect(() => {
     const fetchUserData = async () => {
       if (!userId) {
+        console.log('❌ No user ID provided');
         setIsFetching(false);
         return;
       }
 
       try {
-        const response = await fetch(`http://localhost:5000/api/users/${userId}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch user data');
-        }
+        console.log(`🔄 Fetching user data for ID: ${userId}`);
         
-        const result = await response.json();
+        // UPDATED: Using clientService instead of fetch
+        const response = await clientService.get<UserResponse>(`/users/${userId}`);
+        const result = response.data;
+        
+        console.log('📦 User data response:', result);
+        
         if (result.success && result.data) {
           const user = result.data;
           
@@ -144,8 +191,10 @@ const EditUserPage = () => {
           if (user.userType) {
             if (typeof user.userType === 'object' && user.userType._id) {
               userTypeValue = user.userType._id;
+              console.log(`✅ Found populated user type: ${user.userType.role || user.userType.name}`);
             } else {
               userTypeValue = user.userType;
+              console.log(`ℹ️ User type is ID: ${userTypeValue}`);
             }
           }
 
@@ -194,9 +243,13 @@ const EditUserPage = () => {
               postalCode: user.address.postalCode
             });
           }
+
+          console.log('✅ Form data set successfully:', userFormData);
+        } else {
+          throw new Error(result.message || 'Invalid user data');
         }
       } catch (error) {
-        console.error('Error fetching user:', error);
+        console.error('❌ Error fetching user:', error);
         alert('Error loading user data');
       } finally {
         setIsFetching(false);
@@ -226,9 +279,13 @@ const EditUserPage = () => {
     }
   };
 
+  // UPDATED: Handle form submission using clientService
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId) return;
+    if (!userId) {
+      alert('No user ID provided');
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -245,31 +302,29 @@ const EditUserPage = () => {
         }
       };
 
-      console.log('Updating user with data:', userData);
-
-      const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
+      console.log('🔄 Updating user with data:', {
+        userId,
+        userData,
+        selectedCategory: formData.userType
       });
 
-      const result = await response.json();
+      // UPDATED: Using clientService.put() instead of fetch
+      const response = await clientService.put<UpdateUserResponse>(`/users/${userId}`, userData);
+      const result = response.data;
 
-      if (response.ok && result.success) {
+      if (result.success) {
         await queryClient.invalidateQueries({ 
           queryKey: ['users'], 
           refetchType: 'active' 
         });
         
-        alert('User updated successfully!');
+        alert('✅ User updated successfully!');
         router.push('/user/user-view');
       } else {
         alert(result.message || 'Failed to update user');
       }
     } catch (error) {
-      console.error('Error updating user:', error);
+      console.error('❌ Error updating user:', error);
       alert('Error updating user. Please check your connection.');
     } finally {
       setIsLoading(false);
@@ -288,6 +343,9 @@ const EditUserPage = () => {
           <p className="mt-4 text-gray-600">
             {isFetching ? 'Loading user data...' : 'Loading categories...'}
           </p>
+          <p className="text-sm text-gray-500 mt-2">
+            User ID: {userId}
+          </p>
         </div>
       </div>
     );
@@ -304,6 +362,9 @@ const EditUserPage = () => {
                 <h1 className="text-2xl font-bold text-gray-900">Edit User</h1>
                 <p className="mt-1 text-sm text-gray-600">
                   Update user information with the form below.
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  User ID: {userId}
                 </p>
               </div>
               <Link
@@ -412,6 +473,11 @@ const EditUserPage = () => {
               {categories.length === 0 && (
                 <p className="mt-1 text-sm text-red-600">
                   No categories available. Please add user categories first.
+                </p>
+              )}
+              {formData.userType && (
+                <p className="mt-1 text-sm text-green-600">
+                  Selected category: {categories.find(cat => cat._id === formData.userType)?.role || 'Unknown'}
                 </p>
               )}
             </div>
