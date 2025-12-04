@@ -1,11 +1,13 @@
 'use client';
 
+export const dynamic = 'force-dynamic'
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { clientService } from '../../../app/utils/api-client';
-
+import { Suspense } from 'react';
 interface SupplierCategoryFormData {
   name: string;
   description: string;
@@ -642,4 +644,12 @@ const EditSupplierCategoryPage = () => {
   );
 };
 
-export default EditSupplierCategoryPage;
+// export default EditSupplierCategoryPage;
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <EditSupplierCategoryPage />
+    </Suspense>
+  );
+}
