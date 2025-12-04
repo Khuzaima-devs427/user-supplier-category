@@ -728,11 +728,13 @@ function EditSupplierCategoryContent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
 
-  // Dynamically import useSearchParams inside useEffect to avoid SSR issues
+  // Get categoryId from URL on client-side only - FIXED
   useEffect(() => {
-    const { useSearchParams } = require('next/navigation');
-    const searchParams = useSearchParams();
-    setCategoryId(searchParams.get('id'));
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+      setCategoryId(id);
+    }
   }, []);
 
   // Predefined product categories matching backend enum
@@ -895,7 +897,7 @@ function EditSupplierCategoryContent() {
     }));
   };
 
-  // UPDATED: Handle form submission using axios
+  // Handle form submission using axios
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -991,6 +993,11 @@ function EditSupplierCategoryContent() {
                 <p className="mt-1 text-sm text-gray-600">
                   Update the supplier category information below.
                 </p>
+                {categoryId && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Category ID: {categoryId}
+                  </p>
+                )}
               </div>
               <Link
                 href="/supplier/supplier-categories"

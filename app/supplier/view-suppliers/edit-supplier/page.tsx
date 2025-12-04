@@ -1331,11 +1331,13 @@ function EditSupplierContent() {
   });
   const [supplierId, setSupplierId] = useState<string | null>(null);
 
-  // Dynamically import useSearchParams inside useEffect
+  // Get supplierId from URL on client-side only - FIXED
   useEffect(() => {
-    const { useSearchParams } = require('next/navigation');
-    const searchParams = useSearchParams();
-    setSupplierId(searchParams.get('id'));
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+      setSupplierId(id);
+    }
   }, []);
 
   const countries = [
@@ -1573,6 +1575,7 @@ function EditSupplierContent() {
     router.push('/supplier/view-suppliers');
   };
 
+  // Show loading while fetching supplierId or supplier data
   if (!supplierId || isFetching || loadingSupplierCategories) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

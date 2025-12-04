@@ -706,7 +706,7 @@ interface UserResponse {
     lastName: string;
     email: string;
     phoneNumber: string;
-    userType: any; // Can be string ID or populated object
+    userType: any;
     address: {
       country: string;
       state: string;
@@ -742,10 +742,14 @@ function LoadingSpinner() {
   );
 }
 
-// Main component that uses useSearchParams
+// This is the WORKING pattern - use URLSearchParams instead of useSearchParams
 function EditUserContent() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  
+  // Get userId from URL query params using URLSearchParams (NOT useSearchParams)
+  const [userId, setUserId] = useState<string | null>(null);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -766,7 +770,6 @@ function EditUserContent() {
       postalCode: ''
     }
   });
-  const [userId, setUserId] = useState<string | null>(null);
 
   const countries = [
     { value: 'United States', label: 'United States' },
@@ -777,11 +780,13 @@ function EditUserContent() {
     { value: 'Pakistan', label: 'Pakistan' },
   ];
 
-  // Dynamically import useSearchParams inside useEffect
+  // Get userId from URL on client-side only
   useEffect(() => {
-    const { useSearchParams } = require('next/navigation');
-    const searchParams = useSearchParams();
-    setUserId(searchParams.get('id'));
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+      setUserId(id);
+    }
   }, []);
 
   // Fetch user categories from backend
@@ -814,7 +819,6 @@ function EditUserContent() {
   const handleLocationSelect = (address: Address) => {
     setSelectedLocation(address);
     
-    // Auto-fill the form fields with the selected address
     setFormData(prev => ({
       ...prev,
       address: {
@@ -851,7 +855,6 @@ function EditUserContent() {
         if (result.success && result.data) {
           const user = result.data;
           
-          // Handle userType - it could be an object (populated) or string (ID)
           let userTypeValue = '';
           if (user.userType) {
             if (typeof user.userType === 'object' && user.userType._id) {
@@ -863,7 +866,6 @@ function EditUserContent() {
             }
           }
 
-          // Set form data with user data
           const userFormData = {
             firstName: user.firstName || '',
             lastName: user.lastName || '',
@@ -884,7 +886,6 @@ function EditUserContent() {
 
           setFormData(userFormData);
 
-          // Set selected location for map
           if (user.address?.coordinates?.latitude && user.address?.coordinates?.longitude) {
             setSelectedLocation({
               latitude: user.address.coordinates.latitude,
@@ -921,7 +922,11 @@ function EditUserContent() {
       }
     };
 
-    fetchUserData();
+    if (userId) {
+      fetchUserData();
+    } else {
+      setIsFetching(false);
+    }
   }, [userId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -944,7 +949,6 @@ function EditUserContent() {
     }
   };
 
-  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId) {
@@ -999,15 +1003,14 @@ function EditUserContent() {
     router.push('/user/user-view');
   };
 
+  // Show loading state while fetching data or waiting for userId
   if (!userId || isFetching || loadingCategories) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">
-            {!userId ? 'Loading...' : 
-             isFetching ? 'Loading user data...' : 
-             'Loading categories...'}
+            {!userId ? 'Loading...' : isFetching ? 'Loading user data...' : 'Loading categories...'}
           </p>
           {userId && (
             <p className="text-sm text-gray-500 mt-2">
