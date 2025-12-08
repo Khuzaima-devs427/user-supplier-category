@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { clientService } from '../../../app/utils/api-client';
+import { clientService } from '../../../../../app/utils/api-client';
 
 interface CategoryFormData {
   role: string;

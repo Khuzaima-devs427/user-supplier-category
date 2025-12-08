@@ -483,7 +483,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { clientService } from '../../../app/utils/api-client';
+import { clientService } from '../../../../../app/utils/api-client';
 
 interface CategoryFormData {
   role: string;

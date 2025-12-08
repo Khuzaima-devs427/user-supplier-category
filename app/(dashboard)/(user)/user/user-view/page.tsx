@@ -391,13 +391,13 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import DataGridWrapper from '../../_components/_data-grid/DataGridWrapper';
-import { useUserColumns } from '../../_components/_hooks/useUserColumns';
-import StatusFilter, { EmailStatusFilter } from '../../_components/_filters/StatusFilter';
-import DateRangeFilter from '../../_components/_filters/DateRangeFilter';
-import DeleteConfirmationModal from '../../_components/_modals/DeleteConfirmationModal';
-import ViewDetailsModal from '../../_components/_view-modal/ViewDetailsModal';
-import { clientService } from '../../app/utils/api-client';
+import DataGridWrapper from '../../../../_components/_data-grid/DataGridWrapper';
+import { useUserColumns } from '../../../../_components/_hooks/useUserColumns';
+import StatusFilter, { EmailStatusFilter } from '../../../../_components/_filters/StatusFilter';
+import DateRangeFilter from '../../../../_components/_filters/DateRangeFilter';
+import DeleteConfirmationModal from '../../../../_components/_modals/DeleteConfirmationModal';
+import ViewDetailsModal from '../../../../_components/_view-modal/ViewDetailsModal';
+import { clientService } from '../../../../app/utils/api-client';
 
 // Updated interface for backend response with new model
 interface BackendUser {

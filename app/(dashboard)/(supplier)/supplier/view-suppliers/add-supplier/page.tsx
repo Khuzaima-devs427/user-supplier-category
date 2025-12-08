@@ -522,9 +522,9 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import LeafletMap from '../../../_components/_leaflet_map/map';
+import LeafletMap from '../../../../../_components/_leaflet_map/map';
 import Link from 'next/link';
-import { clientService } from '../../../app/utils/api-client';
+import { clientService } from '../../../../../app/utils/api-client';
 
 interface Address {
   country?: string;

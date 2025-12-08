@@ -653,8 +653,8 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
-import LeafletMap from '../../../_components/_leaflet_map/map';
-import { clientService } from '../../../app/utils/api-client';
+import LeafletMap from '../../../../../_components/_leaflet_map/map';
+import { clientService } from '../../../../../app/utils/api-client';
 
 interface Address {
   country?: string;

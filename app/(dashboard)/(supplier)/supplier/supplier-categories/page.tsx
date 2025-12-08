@@ -343,13 +343,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import DataGridWrapper from '../../_components/_data-grid/DataGridWrapper';
-import { useSupplierCategoryColumns } from '../../_components/_hooks/useSupplierCategoryColumns';
-import DeleteConfirmationModal from '../../_components/_modals/DeleteConfirmationModal';
-import ViewSupplierCategoryModal from '../../_components/_view-modal/ViewSupplierCategoryModal';
-import { ProductTypesFilter, StatusFilter } from '../../_components/_filters/StatusFilter';
-import DateRangeFilter from '../../_components/_filters/DateRangeFilter';
-import { clientService } from '../../app/utils/api-client';
+import DataGridWrapper from '../../../../_components/_data-grid/DataGridWrapper';
+import { useSupplierCategoryColumns } from '../../../../_components/_hooks/useSupplierCategoryColumns';
+import DeleteConfirmationModal from '../../../../_components/_modals/DeleteConfirmationModal';
+import ViewSupplierCategoryModal from '../../../../_components/_view-modal/ViewSupplierCategoryModal';
+import { ProductTypesFilter, StatusFilter } from '../../../../_components/_filters/StatusFilter';
+import DateRangeFilter from '../../../../_components/_filters/DateRangeFilter';
+import { clientService } from '../../../../app/utils/api-client';
 
 // API Response interfaces
 interface ApiResponse<T = any> {
