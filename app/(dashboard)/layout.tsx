@@ -1,6 +1,6 @@
 "use client"
 
-import "./globals.css";
+import "../global.css";
 import type { Metadata } from "next";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarInset, SidebarTrigger, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton } from "../../components/ui/sidebar";
 import Providers from '../providers';
