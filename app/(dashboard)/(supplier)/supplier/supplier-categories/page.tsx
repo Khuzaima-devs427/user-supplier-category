@@ -1,343 +1,4 @@
 // app/supplier/supplier-categories/page.tsx
-// 'use client';
-
-// import React, { useState, useMemo } from 'react';
-// import { useRouter } from 'next/navigation';
-// import { useQuery, useQueryClient } from '@tanstack/react-query';
-// import DataGridWrapper from '../../_components/_data-grid/DataGridWrapper';
-// import { useSupplierCategoryColumns } from '../../_components/_hooks/useSupplierCategoryColumns';
-// import DeleteConfirmationModal from '../../_components/_modals/DeleteConfirmationModal';
-// import ViewSupplierCategoryModal from '../../_components/_view-modal/ViewSupplierCategoryModal';
-// import { ProductTypesFilter, StatusFilter } from '../../_components/_filters/StatusFilter';
-// import DateRangeFilter from '../../_components/_filters/DateRangeFilter';
-
-// interface BackendSupplierCategory {
-//   _id: string;
-//   name: string;
-//   description: string;
-//   productCategories: string[];
-//   productType: 'new' | 'scrap';
-//   isBlocked: boolean; 
-//   status: 'active' | 'inactive';
-//   createdAt: string;
-//   updatedAt: string;
-// }
-
-// const SupplierCategoriesPage = () => {
-//   const router = useRouter();
-//   const queryClient = useQueryClient();
-//   const [search, setSearch] = useState('');
-//   const [productTypeFilter, setproductTypeFilter] = useState('');
-//   const [statusFilter, setStatusFilter] = useState('');
-//   const [startDate, setStartDate] = useState('');
-//   const [endDate, setEndDate] = useState('');
-//   const [currentPage, setCurrentPage] = useState(1);
-//   const [deletingCategory, setDeletingCategory] = useState<any>(null);
-//   const [isDeleting, setIsDeleting] = useState(false);
-//   const [viewingCategory, setViewingCategory] = useState<any>(null);
-//   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-//   const limit = 10;
-
-//   // Fetch supplier categories data
-//   const { data: categoriesData, isLoading, error } = useQuery({
-//     queryKey: ['supplier-categories', search, productTypeFilter, statusFilter, startDate, endDate, currentPage],
-//     queryFn: async () => {
-//       const params = new URLSearchParams({
-//         page: currentPage.toString(),
-//         limit: limit.toString(),
-//         ...(search && { search }),
-//         ...(productTypeFilter && { productType: productTypeFilter }),
-//         ...(statusFilter && { status: statusFilter }),
-//         ...(startDate && { startDate }),
-//         ...(endDate && { endDate }),
-//       });
-
-//       console.log('Fetching supplier categories from:', `http://localhost:5000/api/supplier-categories?${params}`);
-      
-//       const response = await fetch(`http://localhost:5000/api/supplier-categories?${params}`);
-      
-//       if (!response.ok) {
-//         throw new Error(`HTTP error! status: ${response.status}`);
-//       }
-      
-//       const data = await response.json();
-//       console.log('Supplier Categories API Response:', data);
-//       return data;
-//     },
-//   });
-
-//   // Delete supplier category function
-//   const deleteSupplierCategory = async (categoryId: string): Promise<void> => {
-//     const response = await fetch(`http://localhost:5000/api/supplier-categories/${categoryId}`, {
-//       method: 'DELETE',
-//       headers: {
-//         'Content-Type': 'application/json',
-//       },
-//     });
-
-//     if (!response.ok) {
-//       const errorData = await response.json().catch(() => ({}));
-//       throw new Error(errorData.message || `Failed to delete supplier category: ${response.status}`);
-//     }
-
-//     const result = await response.json();
-//     if (!result.success) {
-//       throw new Error(result.message || 'Failed to delete supplier category');
-//     }
-//   };
-
-//   // Handle view supplier category
-//   const handleViewCategory = (category: any) => {
-//     setViewingCategory(category);
-//     setIsViewModalOpen(true);
-//   };
-
-//   // Handle edit supplier category
-//   const handleEditCategory = (category: any) => {
-//     router.push(`/supplier/supplier-categories/edit-supplier-category?id=${category.id}`);
-//   };
-
-//   // Handle delete supplier category confirmation
-//   const handleDeleteCategory = async () => {
-//     if (!deletingCategory) return;
-    
-//     setIsDeleting(true);
-//     try {
-//       await deleteSupplierCategory(deletingCategory.id);
-      
-//       // FIXED: Better cache invalidation
-//       await Promise.all([
-//         queryClient.invalidateQueries({ 
-//           queryKey: ['supplier-categories'], 
-//           refetchType: 'all'
-//         }),
-//         queryClient.refetchQueries({
-//           queryKey: ['supplier-categories']
-//         })
-//       ]);
-      
-//       setDeletingCategory(null);
-//       console.log('Supplier category deleted successfully');
-//     } catch (error) {
-//       console.error('Error deleting supplier category:', error);
-//       alert(`Failed to delete supplier category: ${error instanceof Error ? error.message : 'Unknown error'}`);
-//     } finally {
-//       setIsDeleting(false);
-//     }
-//   };
-
-//   // Handle status change - FIXED: Better cache invalidation
-// // Handle status change - FIXED: Use correct endpoint
-// const handleStatusChange = async (category: any, status: 'active' | 'inactive') => {
-//   try {
-//     console.log('Update supplier category status:', category.id, status);
-    
-//     // Use the correct ID field from backend
-//     const categoryId = category.id || category._id;
-    
-//     // FIX: Use the correct endpoint with /status
-//     const response = await fetch(`http://localhost:5000/api/supplier-categories/${categoryId}/status`, {
-//       method: 'PATCH',
-//       headers: {
-//         'Content-Type': 'application/json',
-//       },
-//       body: JSON.stringify({ status }),
-//     });
-
-//     if (!response.ok) {
-//       const errorData = await response.json().catch(() => ({}));
-//       throw new Error(errorData.message || `Failed to update supplier category status: ${response.status}`);
-//     }
-
-//     const result = await response.json();
-    
-//     if (!result.success) {
-//       throw new Error(result.message || 'Failed to update supplier category status');
-//     }
-
-//     // FIXED: Better cache invalidation
-//     await Promise.all([
-//       queryClient.invalidateQueries({ 
-//         queryKey: ['supplier-categories'], 
-//         refetchType: 'all'
-//       }),
-//       queryClient.refetchQueries({
-//         queryKey: ['supplier-categories']
-//       })
-//     ]);
-    
-//     console.log('Supplier category status updated successfully');
-//   } catch (error) {
-//     console.error('Error updating supplier category status:', error);
-//     alert(`Failed to update supplier category status: ${error instanceof Error ? error.message : 'Unknown error'}`);
-//   }
-// };
-
-//   // Extract data from backend response
-//   const categories: BackendSupplierCategory[] = categoriesData?.data || [];
-//   const totalCategories = categoriesData?.pagination?.totalItems || 0;
-
-//   // Transform backend data to table format
-// // Transform backend data to table format - FIXED: Handle isBlocked to status conversion
-// const dataWithSerial = useMemo(() => {
-//   console.log('Raw categories data:', categories);
-  
-//   return categories.map((category: BackendSupplierCategory, index: number) => {
-//     // FIX: Convert isBlocked to status
-//     const status = category.isBlocked ? 'inactive' : 'active';
-    
-//     const transformed = {
-//       id: category._id,
-//       serialNo: (currentPage - 1) * limit + (index + 1),
-//       name: category.name,
-//       description: category.description,
-//       productCategories: category.productCategories,
-//       productType: category.productType,
-//       status: status, // Use converted status
-//       createdAt: category.createdAt,
-//       updatedAt: category.updatedAt,
-//     };
-    
-//     console.log(`Category ${index}:`, {
-//       originalIsBlocked: category.isBlocked,
-//       convertedStatus: transformed.status,
-//       hasStatus: !!transformed.status
-//     });
-    
-//     return transformed;
-//   });
-// }, [categories, currentPage, limit]);
-
-//   // Handle Add Supplier Category button click
-//   const handleAddCategory = () => {
-//     router.push('/supplier/supplier-categories/add-supplier-category');
-//   };
-
-//   const columns = useSupplierCategoryColumns({
-//     onEdit: handleEditCategory,
-//     onDelete: (category) => {
-//       console.log('Delete supplier category:', category);
-//       setDeletingCategory(category);
-//     },
-//     onStatusChange: handleStatusChange,
-//     onView: handleViewCategory
-//   });
-
-//   const SupplierCategoryFilters =
-//     <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
-//        <ProductTypesFilter
-//         value={productTypeFilter}
-//         onChange={setproductTypeFilter}
-//         placeholder="All Types"
-//       />
-//          <StatusFilter
-//         value={statusFilter}
-//         onChange={setStatusFilter}
-//         placeholder="All Users"
-//       />
- 
-//       <DateRangeFilter
-//         startDate={startDate}
-//         endDate={endDate}
-//         onStartDateChange={setStartDate}
-//         onEndDateChange={setEndDate}
-//       />
-      
-//       <button
-//         onClick={() => {
-//           setproductTypeFilter('');
-//           setStatusFilter('');
-//           setStartDate('');
-//           setEndDate('');
-//           setSearch('');
-//           setCurrentPage(1);
-//         }}
-//         className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 whitespace-nowrap"
-//       >
-//         Clear Filters
-//       </button>
-//     </div>
-
-
-//   // Add error handling
-//   if (error) {
-//     return (
-//       <div className="p-6">
-//         <div className="bg-red-50 border border-red-200 rounded-md p-4">
-//           <h3 className="text-sm font-medium text-red-800">Error loading supplier categories</h3>
-//           <p className="text-sm text-red-600 mt-1">{(error as Error).message}</p>
-//           <button 
-//             onClick={() => window.location.reload()}
-//             className="mt-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-100 rounded-md hover:bg-red-200"
-//           >
-//             Retry
-//           </button>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div>
-//       <DataGridWrapper
-//         title="Supplier Categories Management"
-//         description="Manage all supplier product categories in the system"
-//         columns={columns}
-//         data={dataWithSerial}
-//         isLoading={isLoading}
-//         totalRows={totalCategories}
-//         rowsPerPage={limit}
-//         currentPage={currentPage}
-//         onPageChange={setCurrentPage}
-//         isSearchEnabled={true}
-//         searchState={search}
-//         setSearchState={setSearch}
-//         searchPlaceholder="Search supplier categories by name..."
-//         filtersComponent={SupplierCategoryFilters}
-//         defaultFiltersExpanded={true}
-//         hasAddButton={true}
-//         addButtonText="Add Category"
-//         addButtonOnClick={handleAddCategory}
-//         hasExportButton={true}
-//         onExport={() => console.log('Export supplier categories')}
-//       />
-
-//       {/* Delete Confirmation Modal */}
-//       <DeleteConfirmationModal
-//         isOpen={!!deletingCategory}
-//         onClose={() => !isDeleting && setDeletingCategory(null)}
-//         onConfirm={handleDeleteCategory}
-//         title="Delete Supplier Category"
-//         message="Are you sure you want to delete this supplier category? This action cannot be undone."
-//         itemName={deletingCategory?.name}
-//         isLoading={isDeleting}
-//       />
-
-//       {/* View Supplier Category Modal */}
-//       <ViewSupplierCategoryModal
-//         isOpen={isViewModalOpen}
-//         onClose={() => {
-//           setIsViewModalOpen(false);
-//           setViewingCategory(null);
-//         }}
-//         data={viewingCategory}
-//       />
-//     </div>
-//   );
-// };
-
-// export default SupplierCategoriesPage;
-
-
-
-
-
-
-
-
-
-
-// app/supplier/supplier-categories/page.tsx
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -350,6 +11,7 @@ import ViewSupplierCategoryModal from '../../../../_components/_view-modal/ViewS
 import { ProductTypesFilter, StatusFilter } from '../../../../_components/_filters/StatusFilter';
 import DateRangeFilter from '../../../../_components/_filters/DateRangeFilter';
 import { clientService } from '../../../../app/utils/api-client';
+import { usePermissions } from '../../../../_components/contexts/PermissionContext';
 
 // API Response interfaces
 interface ApiResponse<T = any> {
@@ -375,18 +37,11 @@ interface BackendSupplierCategory {
   updatedAt: string;
 }
 
-interface SupplierCategoriesApiResponse {
-  data: BackendSupplierCategory[];
-  pagination?: {
-    totalItems: number;
-    currentPage: number;
-    totalPages: number;
-  };
-}
-
 const SupplierCategoriesPage = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { permissions } = usePermissions(); // GET PERMISSIONS FROM CONTEXT
+  
   const [search, setSearch] = useState('');
   const [productTypeFilter, setproductTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -399,80 +54,70 @@ const SupplierCategoriesPage = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const limit = 10;
 
-  // DEBUG: Test API connection
+  // DEBUG: Add debug logging for permissions
   useEffect(() => {
-    const testApi = async () => {
-      try {
-        console.log('🧪 Testing supplier-categories API connection...');
-        const testResponse = await clientService.get<ApiResponse<BackendSupplierCategory[]>>('/supplier-categories?page=1&limit=5');
-        console.log('✅ Supplier Categories API Test Success:', testResponse.data);
-      } catch (error) {
-        console.error('❌ Supplier Categories API Test Failed:', error);
-      }
-    };
+    console.log('🔍 DEBUG - Current permissions in SupplierCategoriesPage:', {
+      permissions,
+      isStaticAdmin: permissions.isStaticAdmin,
+      supplier_categories_edit: permissions['supplier_categories.edit'],
+      supplier_categories_delete: permissions['supplier_categories.delete'],
+      supplier_categories_create: permissions['supplier_categories.create'],
+      supplier_categories_view: permissions['supplier_categories.view'],
+      allTruePermissions: Object.keys(permissions).filter(k => permissions[k])
+    });
+  }, [permissions]);
+
+  // Helper function to check permissions
+  const hasPermission = (permissionKey: string): boolean => {
+    // If user is static admin, they have ALL permissions
+    if (permissions.isStaticAdmin === true) {
+      console.log(`✅ Static admin override for permission: ${permissionKey}`);
+      return true;
+    }
     
-    testApi();
-  }, []);
+    // Check specific permission
+    const hasPerm = permissions[permissionKey] === true;
+    console.log(`🔍 Checking permission "${permissionKey}": ${hasPerm}`);
+    return hasPerm;
+  };
 
   // UPDATED: Fetch supplier categories data with proper typing
   const { data: categoriesData, isLoading, error } = useQuery({
     queryKey: ['supplier-categories', search, productTypeFilter, statusFilter, startDate, endDate, currentPage],
-queryFn: async (): Promise<BackendSupplierCategory[]> => {
-  const params = new URLSearchParams({
-    page: currentPage.toString(),
-    limit: limit.toString(),
-    ...(search && { search }),
-    ...(productTypeFilter && { productType: productTypeFilter }),
-    ...(statusFilter && { status: statusFilter }),
-    ...(startDate && { startDate }),
-    ...(endDate && { endDate }),
-  });
+    queryFn: async (): Promise<BackendSupplierCategory[]> => {
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: limit.toString(),
+        ...(search && { search }),
+        ...(productTypeFilter && { productType: productTypeFilter }),
+        ...(statusFilter && { status: statusFilter }),
+        ...(startDate && { startDate }),
+        ...(endDate && { endDate }),
+      });
 
-  console.log('🔍 Fetching supplier categories from:', `/supplier-categories?${params}`);
-  
-  try {
-    const response = await clientService.get<ApiResponse<BackendSupplierCategory[]>>(`/supplier-categories?${params}`);
-    console.log('🚀 FULL API RESPONSE:', response);
-    console.log('📊 Response data:', response.data);
-    
-    // FIXED: Properly extract the data array from the API response
-    const apiData = response.data as ApiResponse<BackendSupplierCategory[]>;
-    console.log('🔍 Response structure:', {
-      success: apiData.success,
-      message: apiData.message,
-      data: apiData.data,
-      pagination: apiData.pagination
-    });
-    
-    // Check what's actually in the response
-    if (apiData) {
-      console.log('🎯 Response data keys:', Object.keys(apiData));
+      console.log('🔍 Fetching supplier categories from:', `/supplier-categories?${params}`);
       
-      // If response.data is the API response wrapper
-      if (apiData.success !== undefined) {
-        console.log('📦 API wrapper detected (success, message, data structure)');
-        return apiData.data; // Return the nested data
+      try {
+        const response = await clientService.get<ApiResponse<BackendSupplierCategory[]>>(`/supplier-categories?${params}`);
+        console.log('🚀 FULL API RESPONSE:', response);
+        console.log('📊 Response data:', response.data);
+        
+        // FIXED: Properly extract the data array from the API response
+        const apiData = response.data as ApiResponse<BackendSupplierCategory[]>;
+        console.log('🔍 Response structure:', {
+          success: apiData.success,
+          message: apiData.message,
+          data: apiData.data,
+          pagination: apiData.pagination
+        });
+        
+        // Return just the data array (not the whole ApiResponse object)
+        return apiData.data;
+      } catch (err) {
+        console.error('❌ API Error:', err);
+        throw err;
       }
-    }
-    
-    console.log('⚠️ Unknown response structure, returning raw:', response.data);
-    
-    // FIXED: Handle different response structures
-    if (Array.isArray(response.data)) {
-      console.log('📦 response.data is already an array');
-      return response.data as BackendSupplierCategory[];
-    } else if (response.data && typeof response.data === 'object' && 'data' in (response.data as any)) {
-      console.log('📦 response.data has data property');
-      return (response.data as ApiResponse<BackendSupplierCategory[]>).data;
-    }
-    
-    console.log('⚠️ Could not extract data, returning empty array');
-    return [];
-  } catch (err) {
-    console.error('❌ API Error:', err);
-    throw err;
-  }
-},
+    },
   });
 
   // DEBUG: Check what categoriesData contains
@@ -481,10 +126,8 @@ queryFn: async (): Promise<BackendSupplierCategory[]> => {
     console.log('🎯 categoriesData type:', typeof categoriesData);
     if (categoriesData) {
       console.log('🎯 categoriesData keys:', Object.keys(categoriesData));
-      console.log('🎯 categoriesData.data:', (categoriesData as any).data);
-      console.log('🎯 categoriesData.pagination:', (categoriesData as any).pagination);
-      console.log('🎯 Is categoriesData.data an array?:', Array.isArray((categoriesData as any).data));
       console.log('🎯 Is categoriesData an array?:', Array.isArray(categoriesData));
+      console.log('🎯 categoriesData length:', Array.isArray(categoriesData) ? categoriesData.length : 'Not an array');
     }
   }, [categoriesData]);
 
@@ -504,14 +147,26 @@ queryFn: async (): Promise<BackendSupplierCategory[]> => {
     setIsViewModalOpen(true);
   };
 
-  // Handle edit supplier category
+  // Handle edit supplier category - Updated with permission helper
   const handleEditCategory = (category: any) => {
+    // Check if user has edit permission
+    if (!hasPermission('supplier_categories.edit')) {
+      alert('You do not have permission to edit supplier categories');
+      return;
+    }
     router.push(`/supplier/supplier-categories/edit-supplier-category?id=${category.id}`);
   };
 
-  // Handle delete supplier category confirmation
+  // Handle delete supplier category confirmation - Updated with permission helper
   const handleDeleteCategory = async () => {
     if (!deletingCategory) return;
+    
+    // Check if user has delete permission
+    if (!hasPermission('supplier_categories.delete')) {
+      alert('You do not have permission to delete supplier categories');
+      setDeletingCategory(null);
+      return;
+    }
     
     setIsDeleting(true);
     try {
@@ -528,19 +183,25 @@ queryFn: async (): Promise<BackendSupplierCategory[]> => {
       ]);
       
       setDeletingCategory(null);
-      console.log('Supplier category deleted successfully');
+      console.log('✅ Supplier category deleted successfully');
     } catch (error) {
-      console.error('Error deleting supplier category:', error);
+      console.error('❌ Error deleting supplier category:', error);
       alert(`Failed to delete supplier category: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Handle status change
+  // Handle status change - Updated with permission helper
   const handleStatusChange = async (category: any, status: 'active' | 'inactive') => {
+    // Check if user has edit permission
+    if (!hasPermission('supplier_categories.edit')) {
+      alert('You do not have permission to update supplier category status');
+      return;
+    }
+    
     try {
-      console.log('Update supplier category status:', category.id, status);
+      console.log('🔄 Update supplier category status:', category.id, status);
       
       const categoryId = category.id || category._id;
       
@@ -554,19 +215,11 @@ queryFn: async (): Promise<BackendSupplierCategory[]> => {
         throw new Error(result.message || 'Failed to update supplier category status');
       }
 
-      await Promise.all([
-        queryClient.invalidateQueries({ 
-          queryKey: ['supplier-categories'], 
-          refetchType: 'all'
-        }),
-        queryClient.refetchQueries({
-          queryKey: ['supplier-categories']
-        })
-      ]);
+      await queryClient.invalidateQueries({ queryKey: ['supplier-categories'] });
       
-      console.log('Supplier category status updated successfully');
+      console.log('✅ Supplier category status updated successfully');
     } catch (error) {
-      console.error('Error updating supplier category status:', error);
+      console.error('❌ Error updating supplier category status:', error);
       alert(`Failed to update supplier category status: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
@@ -580,7 +233,7 @@ queryFn: async (): Promise<BackendSupplierCategory[]> => {
     
     console.log('🔧 Processing categoriesData:', categoriesData);
     
-    // categoriesData is already the array from our query function
+    // categoriesData should already be the array from our query function
     if (Array.isArray(categoriesData)) {
       console.log('📦 categoriesData is direct array');
       return categoriesData;
@@ -604,9 +257,6 @@ queryFn: async (): Promise<BackendSupplierCategory[]> => {
     }
     
     console.log('🔧 Calculating total from:', categoriesData);
-    
-    // Since your API returns pagination in the wrapper, but we're returning just the array
-    // We need to handle this differently
     
     // If categoriesData is an array, return its length
     if (Array.isArray(categoriesData)) {
@@ -656,34 +306,46 @@ queryFn: async (): Promise<BackendSupplierCategory[]> => {
     return transformed;
   }, [categories, currentPage, limit]);
 
-  // Handle Add Supplier Category button click
+  // Handle Add Supplier Category button click - Check permission before adding
   const handleAddCategory = () => {
+    // Check if user has create permission
+    if (!hasPermission('supplier_categories.create')) {
+      alert('You do not have permission to add supplier categories');
+      return;
+    }
     router.push('/supplier/supplier-categories/add-supplier-category');
   };
 
+  // Update columns with permission checks
   const columns = useSupplierCategoryColumns({
     onEdit: handleEditCategory,
     onDelete: (category) => {
+      // Check if user has delete permission
+      if (!hasPermission('supplier_categories.delete')) {
+        alert('You do not have permission to delete supplier categories');
+        return;
+      }
       console.log('Delete supplier category:', category);
       setDeletingCategory(category);
     },
     onStatusChange: handleStatusChange,
-    onView: handleViewCategory
+    onView: handleViewCategory,
+    // Pass permissions to the column hook
+    permissions: permissions
   });
 
-  const SupplierCategoryFilters =
+  const SupplierCategoryFilters = (
     <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
-       <ProductTypesFilter
+      <ProductTypesFilter
         value={productTypeFilter}
         onChange={setproductTypeFilter}
         placeholder="All Types"
       />
-         <StatusFilter
+      <StatusFilter
         value={statusFilter}
         onChange={setStatusFilter}
-        placeholder="All Users"
+        placeholder="All Status"
       />
- 
       <DateRangeFilter
         startDate={startDate}
         endDate={endDate}
@@ -705,6 +367,27 @@ queryFn: async (): Promise<BackendSupplierCategory[]> => {
         Clear Filters
       </button>
     </div>
+  );
+
+  // Check if user has view permission for supplier categories - Updated with permission helper
+  if (!hasPermission('supplier_categories.view')) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Access Denied</h2>
+          <p className="text-gray-600 mb-4">
+            You don't have permission to access the supplier categories management page.
+          </p>
+          <button
+            onClick={() => router.back()}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Add error handling
   if (error) {
@@ -752,11 +435,16 @@ queryFn: async (): Promise<BackendSupplierCategory[]> => {
         hasAddButton={true}
         addButtonText="Add Category"
         addButtonOnClick={handleAddCategory}
+        addButtonPermission="supplier_categories.create"
         hasExportButton={true}
         onExport={() => console.log('Export supplier categories')}
+        allPermissions={permissions}
+        enableRowActions={true}
+        editPermission="supplier_categories.edit"
+        deletePermission="supplier_categories.delete"
       />
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal - FIXED: Changed type to "supplier-category" */}
       <DeleteConfirmationModal
         isOpen={!!deletingCategory}
         onClose={() => !isDeleting && setDeletingCategory(null)}
@@ -765,6 +453,7 @@ queryFn: async (): Promise<BackendSupplierCategory[]> => {
         message="Are you sure you want to delete this supplier category? This action cannot be undone."
         itemName={deletingCategory?.name}
         isLoading={isDeleting}
+        type="supplier-category"  // FIXED: Changed from "supplier category" to "supplier-category"
       />
 
       {/* View Supplier Category Modal */}

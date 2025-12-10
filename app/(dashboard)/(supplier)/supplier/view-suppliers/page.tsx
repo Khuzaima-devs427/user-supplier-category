@@ -409,6 +409,7 @@ import DateRangeFilter from '../../../../_components/_filters/DateRangeFilter';
 import DeleteConfirmationModal from '../../../../_components/_modals/DeleteConfirmationModal';
 import ViewDetailsModal from '../../../../_components/_view-modal/ViewDetailsModal';
 import { clientService } from '../../../../app/utils/api-client';
+import { usePermissions } from '../../../../_components/contexts/PermissionContext';
 
 // API Response interfaces
 interface ApiResponse<T = any> {
@@ -440,6 +441,8 @@ interface BackendSupplier {
 const SuppliersPage = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { permissions } = usePermissions(); // GET PERMISSIONS FROM CONTEXT
+  
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [emailStatusFilter, setEmailStatusFilter] = useState(''); 
@@ -453,20 +456,32 @@ const SuppliersPage = () => {
   const [viewingSupplier, setViewingSupplier] = useState<any>(null);
   const limit = 10;
 
-  // DEBUG: Test API connection
+  // DEBUG: Add debug logging for permissions
   useEffect(() => {
-    const testApi = async () => {
-      try {
-        console.log('🧪 Testing suppliers API connection...');
-        const testResponse = await clientService.get<ApiResponse<BackendSupplier[]>>('/suppliers?page=1&limit=5');
-        console.log('✅ Suppliers API Test Success:', testResponse.data);
-      } catch (error) {
-        console.error('❌ Suppliers API Test Failed:', error);
-      }
-    };
+    console.log('🔍 DEBUG - Current permissions in SuppliersPage:', {
+      permissions,
+      isStaticAdmin: permissions.isStaticAdmin,
+      suppliers_edit: permissions['suppliers.edit'],
+      suppliers_delete: permissions['suppliers.delete'],
+      suppliers_create: permissions['suppliers.create'],
+      suppliers_view: permissions['suppliers.view'],
+      allTruePermissions: Object.keys(permissions).filter(k => permissions[k])
+    });
+  }, [permissions]);
+
+  // Helper function to check permissions
+  const hasPermission = (permissionKey: string): boolean => {
+    // If user is static admin, they have ALL permissions
+    if (permissions.isStaticAdmin === true) {
+      console.log(`✅ Static admin override for permission: ${permissionKey}`);
+      return true;
+    }
     
-    testApi();
-  }, []);
+    // Check specific permission
+    const hasPerm = permissions[permissionKey] === true;
+    console.log(`🔍 Checking permission "${permissionKey}": ${hasPerm}`);
+    return hasPerm;
+  };
 
   // UPDATED: Fetch suppliers data using axios
   const { data: suppliersData, isLoading, error } = useQuery({
@@ -570,8 +585,14 @@ const SuppliersPage = () => {
     }
   };
 
-  // Handle edit supplier
+  // Handle edit supplier - Updated with permission helper
   const handleEditSupplier = (supplier: any) => {
+    // Check if user has edit permission
+    if (!hasPermission('suppliers.edit')) {
+      alert('You do not have permission to edit suppliers');
+      return;
+    }
+    
     const editData = {
       id: supplier.id,
       firstName: supplier.firstName,
@@ -593,9 +614,16 @@ const SuppliersPage = () => {
     setViewingSupplier(supplier);
   };
 
-  // Handle delete supplier confirmation
+  // Handle delete supplier confirmation - Updated with permission helper
   const handleDeleteSupplier = async () => {
     if (!deletingSupplier) return;
+    
+    // Check if user has delete permission
+    if (!hasPermission('suppliers.delete')) {
+      alert('You do not have permission to delete suppliers');
+      setDeletingSupplier(null);
+      return;
+    }
     
     setIsDeleting(true);
     try {
@@ -605,21 +633,32 @@ const SuppliersPage = () => {
         refetchType: 'active' 
       });
       setDeletingSupplier(null);
+      console.log('✅ Supplier deleted successfully');
     } catch (error) {
-      console.error('Error deleting supplier:', error);
+      console.error('❌ Error deleting supplier:', error);
       alert(`Failed to delete supplier: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Handle status change
+  // Handle status change - Updated with permission helper
   const handleStatusChange = (supplier: any, status: 'active' | 'inactive') => {
+    // Check if user has edit permission
+    if (!hasPermission('suppliers.edit')) {
+      alert('You do not have permission to update supplier status');
+      return;
+    }
     updateSupplierStatus(supplier.id, status);
   };
 
-  // Handle email verification change
+  // Handle email verification change - Updated with permission helper
   const handleEmailVerificationChange = (supplier: any, isEmailVerified: boolean) => {
+    // Check if user has edit permission
+    if (!hasPermission('suppliers.edit')) {
+      alert('You do not have permission to update email verification');
+      return;
+    }
     updateEmailVerification(supplier.id, isEmailVerified);
   };
 
@@ -724,16 +763,33 @@ const SuppliersPage = () => {
     });
   }, [suppliers, currentPage, limit]);
 
+  // Handle Add Supplier button click - Check permission before adding
   const handleAddSupplier = () => {
+    // Check if user has create permission
+    if (!hasPermission('suppliers.create')) {
+      alert('You do not have permission to add suppliers');
+      return;
+    }
     router.push('/supplier/view-suppliers/add-supplier');
   };
 
+  // Update columns with permission checks
   const columns = useSupplierColumns({
     onEdit: handleEditSupplier,
-    onDelete: (supplier) => setDeletingSupplier(supplier),
+    onDelete: (supplier) => {
+      // Check if user has delete permission
+      if (!hasPermission('suppliers.delete')) {
+        alert('You do not have permission to delete suppliers');
+        return;
+      }
+      console.log('Delete supplier:', supplier);
+      setDeletingSupplier(supplier);
+    },
     onView: handleViewSupplier,
     onStatusChange: handleStatusChange,
     onEmailVerificationChange: handleEmailVerificationChange,
+    // Pass permissions to the column hook
+    permissions: permissions
   });
 
   // Filters component
@@ -770,6 +826,26 @@ const SuppliersPage = () => {
       </button>
     </div>
   ;
+
+  // Check if user has view permission for suppliers - Updated with permission helper
+  if (!hasPermission('suppliers.view')) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Access Denied</h2>
+          <p className="text-gray-600 mb-4">
+            You don't have permission to access the suppliers management page.
+          </p>
+          <button
+            onClick={() => router.back()}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Add error handling
   if (error) {
@@ -817,8 +893,13 @@ const SuppliersPage = () => {
         hasAddButton={true}
         addButtonText="Add Supplier"
         addButtonOnClick={handleAddSupplier}
+        addButtonPermission="suppliers.create"
         hasExportButton={true}
         onExport={() => console.log('Export suppliers')}
+        allPermissions={permissions}
+        enableRowActions={true}
+        editPermission="suppliers.edit"
+        deletePermission="suppliers.delete"
       />
 
       {/* Delete Confirmation Modal for Suppliers */}
@@ -845,11 +926,6 @@ const SuppliersPage = () => {
 };
 
 export default SuppliersPage;
-
-
-
-
-
 
 
 

@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import {Eye, Edit, Trash2, ChevronDown, Check } from 'lucide-react';
+import { Eye, Edit, Trash2, ChevronDown, Check } from 'lucide-react';
 
 interface Supplier {
   id: string;
@@ -20,7 +20,8 @@ interface UseSupplierColumnsProps {
   onDelete?: (supplier: Supplier) => void;
   onStatusChange?: (supplier: Supplier, status: 'active' | 'inactive') => void;
   onEmailVerificationChange?: (supplier: Supplier, isEmailVerified: boolean) => void;
-   onView?: (supplier: Supplier) => void;
+  onView?: (supplier: Supplier) => void;
+  permissions?: { [key: string]: boolean };
 }
 
 /* -------------------------
@@ -146,9 +147,11 @@ export const useSupplierColumns = ({
   onDelete,
   onStatusChange,
   onView,
-  onEmailVerificationChange
+  onEmailVerificationChange,
+  permissions = {}
 }: UseSupplierColumnsProps) => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const refs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const statusOptions = [
     { value: 'active' as const, label: 'Active', color: 'bg-green-100 text-green-800' },
@@ -160,7 +163,19 @@ export const useSupplierColumns = ({
     { value: false, label: 'Unverified', color: 'bg-red-100 text-red-800' }
   ];
 
-  const refs = useRef<Record<string, HTMLButtonElement | null>>({});
+  // Helper function to check permissions
+  const hasPermission = (permissionKey: string): boolean => {
+    // If user is static admin, they have ALL permissions
+    if (permissions.isStaticAdmin === true) {
+      console.log(`✅ Static admin override for permission: ${permissionKey}`);
+      return true;
+    }
+    
+    // Check specific permission
+    const hasPerm = permissions[permissionKey] === true;
+    console.log(`🔍 useSupplierColumns checking "${permissionKey}": ${hasPerm}`);
+    return hasPerm;
+  };
 
   // Safe category formatter function
   const formatCategory = (category: string): string => {
@@ -168,7 +183,6 @@ export const useSupplierColumns = ({
       return 'No Category';
     }
     
-    // Replace underscores with spaces and capitalize first letter of each word
     return category
       .replace(/_/g, ' ')
       .replace(/\b\w/g, (char) => char.toUpperCase());
@@ -192,7 +206,6 @@ export const useSupplierColumns = ({
         selector: (row: Supplier) => row.email, 
         sortable: true 
       },
-
       {
         name: 'Category',
         selector: (row: Supplier) => row.category,
@@ -203,8 +216,6 @@ export const useSupplierColumns = ({
           </span>
         )
       },
-
-      /* STATUS */
       {
         name: 'Status',
         selector: (row: Supplier) => row.status,
@@ -213,6 +224,16 @@ export const useSupplierColumns = ({
           const id = `status-${row.id}`;
           const isOpen = activeDropdown === id;
           const current = statusOptions.find((s) => s.value === row.status);
+          
+          // Check if user has permission to change status
+          const canChangeStatus = hasPermission('suppliers.edit');
+
+          console.log('🔍 Status dropdown permissions for suppliers:', {
+            rowId: row.id,
+            canChangeStatus,
+            isStaticAdmin: permissions.isStaticAdmin,
+            suppliers_edit: permissions['suppliers.edit']
+          });
 
           return (
             <div className="relative overflow-visible">
@@ -220,8 +241,16 @@ export const useSupplierColumns = ({
                 ref={(el) => {
                   refs.current[id] = el;
                 }}
-                onClick={() => setActiveDropdown(isOpen ? null : id)}
-                className={`px-3 py-1 inline-flex items-center text-xs font-semibold rounded-full transition-all duration-200 ${current?.color}`}
+                onClick={() => {
+                  if (canChangeStatus) {
+                    setActiveDropdown(isOpen ? null : id);
+                  }
+                }}
+                className={`px-3 py-1 inline-flex items-center text-xs font-semibold rounded-full transition-all duration-200 ${current?.color} ${
+                  !canChangeStatus ? 'cursor-not-allowed opacity-75' : ''
+                }`}
+                disabled={!canChangeStatus}
+                title={!canChangeStatus ? "No permission to change status" : ""}
               >
                 {current?.label}
                 <ChevronDown className={`w-3 h-3 ml-1 ${isOpen ? 'rotate-180' : ''}`} />
@@ -229,7 +258,7 @@ export const useSupplierColumns = ({
 
               <PortalDropdown
                 anchorEl={refs.current[id]}
-                isOpen={isOpen}
+                isOpen={isOpen && canChangeStatus}
                 selectedValue={row.status}
                 options={statusOptions}
                 onClose={() => setActiveDropdown(null)}
@@ -242,8 +271,6 @@ export const useSupplierColumns = ({
           );
         }
       },
-
-      /* EMAIL VERIFIED */
       {
         name: 'Email Verified',
         selector: (row: Supplier) => row.isEmailVerified,
@@ -252,6 +279,16 @@ export const useSupplierColumns = ({
           const id = `email-${row.id}`;
           const isOpen = activeDropdown === id;
           const current = emailVerificationOptions.find((e) => e.value === row.isEmailVerified);
+          
+          // Check if user has permission to change email verification
+          const canChangeEmailVerification = hasPermission('suppliers.edit');
+
+          console.log('🔍 Email verification dropdown permissions for suppliers:', {
+            rowId: row.id,
+            canChangeEmailVerification,
+            isStaticAdmin: permissions.isStaticAdmin,
+            suppliers_edit: permissions['suppliers.edit']
+          });
 
           return (
             <div className="relative overflow-visible">
@@ -259,8 +296,16 @@ export const useSupplierColumns = ({
                 ref={(el) => {
                   refs.current[id] = el;
                 }}
-                onClick={() => setActiveDropdown(isOpen ? null : id)}
-                className={`px-3 py-1 inline-flex items-center text-xs font-semibold rounded-full transition-all duration-200 ${current?.color}`}
+                onClick={() => {
+                  if (canChangeEmailVerification) {
+                    setActiveDropdown(isOpen ? null : id);
+                  }
+                }}
+                className={`px-3 py-1 inline-flex items-center text-xs font-semibold rounded-full transition-all duration-200 ${current?.color} ${
+                  !canChangeEmailVerification ? 'cursor-not-allowed opacity-75' : ''
+                }`}
+                disabled={!canChangeEmailVerification}
+                title={!canChangeEmailVerification ? "No permission to change email verification" : ""}
               >
                 {current?.label}
                 <ChevronDown className={`w-3 h-3 ml-1 ${isOpen ? 'rotate-180' : ''}`} />
@@ -268,7 +313,7 @@ export const useSupplierColumns = ({
 
               <PortalDropdown
                 anchorEl={refs.current[id]}
-                isOpen={isOpen}
+                isOpen={isOpen && canChangeEmailVerification}
                 selectedValue={row.isEmailVerified}
                 options={emailVerificationOptions}
                 onClose={() => setActiveDropdown(null)}
@@ -281,43 +326,85 @@ export const useSupplierColumns = ({
           );
         }
       },
-
       {
         name: 'Created At',
         selector: (row: Supplier) => row.createdAt,
         sortable: true,
         cell: (row: Supplier) => new Date(row.createdAt).toLocaleDateString()
       },
-
       {
         name: 'Actions',
-        cell: (row: Supplier) => (
-          <div className="flex space-x-2">
-            <button
-              onClick={() => onView?.(row)}
-              className="flex items-center space-x-1 bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded transition duration-200"
-              title="View Category"
-            >
-              <Eye className="w-3 h-3" />
-            </button>
-            <button
-              onClick={() => onEdit?.(row)}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded"
-            >
-              <Edit className="w-3 h-3" />
-            </button>
+        cell: (row: Supplier) => {
+          // Check permissions for each action
+          const canView = hasPermission('suppliers.view') || permissions.view === true;
+          const canEdit = hasPermission('suppliers.edit');
+          const canDelete = hasPermission('suppliers.delete');
 
-            <button
-              onClick={() => onDelete?.(row)}
-              className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
-            >
-              <Trash2 className="w-3 h-3" />
-            </button>
-          </div>
-        )
+          console.log('🔍 Row action permissions for suppliers:', {
+            rowId: row.id,
+            canView,
+            canEdit,
+            canDelete,
+            isStaticAdmin: permissions.isStaticAdmin,
+            suppliers_edit: permissions['suppliers.edit'],
+            suppliers_delete: permissions['suppliers.delete']
+          });
+
+          return (
+            <div className="flex space-x-2">
+              {canView ? (
+                <button
+                  onClick={() => onView?.(row)}
+                  className="flex items-center space-x-1 bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded transition duration-200"
+                  title="View Supplier"
+                >
+                  <Eye className="w-3 h-3" />
+                </button>
+              ) : (
+                <div className="flex items-center space-x-1 bg-gray-300 text-white px-2 py-1 rounded cursor-not-allowed opacity-50">
+                  <Eye className="w-3 h-3" />
+                </div>
+              )}
+              
+              {canEdit ? (
+                <button
+                  onClick={() => onEdit?.(row)}
+                  className="flex items-center space-x-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded transition duration-200"
+                  title="Edit Supplier"
+                >
+                  <Edit className="w-3 h-3" />
+                </button>
+              ) : (
+                <div 
+                  className="flex items-center space-x-1 bg-gray-300 text-white px-2 py-1 rounded cursor-not-allowed opacity-50"
+                  title="No edit permission"
+                >
+                  <Edit className="w-3 h-3" />
+                </div>
+              )}
+              
+              {canDelete ? (
+                <button
+                  onClick={() => onDelete?.(row)}
+                  className="flex items-center space-x-1 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded transition duration-200"
+                  title="Delete Supplier"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              ) : (
+                <div 
+                  className="flex items-center space-x-1 bg-gray-300 text-white px-2 py-1 rounded cursor-not-allowed opacity-50"
+                  title="No delete permission"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </div>
+              )}
+            </div>
+          );
+        }
       }
     ],
-    [onEdit, onDelete, onStatusChange, onEmailVerificationChange, activeDropdown]
+    [onEdit, onDelete, onStatusChange, onEmailVerificationChange, onView, activeDropdown, permissions]
   );
 
   return columns;

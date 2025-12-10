@@ -536,8 +536,7 @@ const AddCategoryPage = () => {
     { value: 'full_access', label: 'Full Access (All Permissions)' },
     { value: 'read_only', label: 'Read Only' },
     { value: 'manager', label: 'Manager Access' },
-    { value: 'basic', label: 'Basic Access' },
-    { value: 'custom', label: 'Custom Permissions' }
+   
   ];
 
   // Fetch system permissions on component mount - UPDATED: Using clientService
@@ -590,19 +589,19 @@ const AddCategoryPage = () => {
         defaultPermissions = [
           'dashboard.view',
           'users.view', 'users.create', 'users.edit',
-          'user_categories.view',
+          'user_categories.view','user_categories.create','user_categories.delete',
           'suppliers.view', 'suppliers.create', 'suppliers.edit',
-          'supplier_categories.view',
-          'projects.view', 'projects.create', 'projects.edit',
+          'supplier_categories.view','supplier_categories.create','supplier_categories.delete',
+          'projects.view',
           'analytics.view',
           'settings.view'
         ];
         break;
       case 'User':
-        defaultPermissions = ['dashboard.view', 'users.view', 'projects.view'];
+        defaultPermissions = ['dashboard.view', 'users.view','user_categories.view', 'projects.view', 'analytics.view', 'settings.view'];
         break;
       case 'Supplier':
-        defaultPermissions = ['dashboard.view', 'suppliers.view', 'projects.view'];
+        defaultPermissions = ['dashboard.view', 'suppliers.view','supplier_categories.view', 'projects.view', 'analytics.view', 'settings.view'];
         break;
       case 'Other':
         defaultPermissions = ['dashboard.view'];
@@ -651,20 +650,16 @@ const AddCategoryPage = () => {
         break;
       case 'manager':
         groupPermissions = [
-          'dashboard.view',
-          'users.view', 'users.create', 'users.edit',
-          'suppliers.view', 'suppliers.create', 'suppliers.edit',
-          'projects.view', 'projects.create', 'projects.edit',
-          'analytics.view',
-          'settings.view'
+        'dashboard.view',
+        'users.view', 'users.edit',
+        'user_categories.view', 'user_categories.edit', 
+        'suppliers.view', 'suppliers.edit',
+        'supplier_categories.view', 'supplier_categories.edit',
+        'projects.view',
+        'analytics.view',
+        'settings.view'
         ];
         break;
-      case 'basic':
-        groupPermissions = ['dashboard.view', 'users.view', 'projects.view'];
-        break;
-      case 'custom':
-        // Keep current permissions for custom
-        return;
       default:
         groupPermissions = [];
     }
