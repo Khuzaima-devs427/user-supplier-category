@@ -1313,16 +1313,16 @@ const UsersPage = () => {
         enableRowActions={true}
         editPermission="users.edit" // EDIT PERMISSION
         deletePermission="users.delete" // DELETE PERMISSION
-        enableBulkActions={hasUserDeletePermission} // Only enable if user can delete
-        onBulkDelete={(selectedUsers) => {
-          if (!hasUserDeletePermission) {
-            alert('You do not have permission to delete users');
-            return;
-          }
-          // Handle bulk delete
-          console.log('Bulk delete users:', selectedUsers);
-        }}
-        bulkDeletePermission="users.delete" // BULK DELETE PERMISSION
+        // enableBulkActions={hasUserDeletePermission} // Only enable if user can delete
+        // onBulkDelete={(selectedUsers) => {
+        //   if (!hasUserDeletePermission) {
+        //     alert('You do not have permission to delete users');
+        //     return;
+        //   }
+        //   // Handle bulk delete
+        //   console.log('Bulk delete users:', selectedUsers);
+        // }}
+        // bulkDeletePermission="users.delete" // BULK DELETE PERMISSION
       />
 
       {/* Delete Confirmation Modal */}
