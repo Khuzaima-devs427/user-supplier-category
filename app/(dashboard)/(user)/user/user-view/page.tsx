@@ -844,11 +844,13 @@ import { usePermissions } from '../../../../_components/contexts/PermissionConte
 // Updated interface for backend response with new model
 interface BackendUser {
   _id: string;
-  firstName: string;
-  lastName: string;
+  name: string;  // <-- Add this
+  firstName?: string;
+  lastName?: string;
   email: string;
   phoneNumber: string;
   userType: any;
+  categoryType: string;
   address?: any;
   isBlocked: boolean;
   isEmailVerified: boolean;
@@ -929,7 +931,7 @@ const UsersPage = () => {
     }
     
     if (typeof userType === 'object') {
-      return userType.role || userType._id || 'Unnamed Category';
+      return userType.categoryType || userType._id || 'Unnamed Category';
     }
     
     return 'No Category';
@@ -1166,24 +1168,99 @@ const UsersPage = () => {
   };
 
   // Transform backend data to table format
-  const dataWithSerial = useMemo(() => {
-    return users.map((user: BackendUser, index: number) => ({
+// const dataWithSerial = useMemo(() => {
+//   return users.map((user: BackendUser, index: number) => {
+//     // Get category from either direct categoryType field OR userType object
+//     let categoryName = 'No Category';
+    
+//     // Priority 1: Direct categoryType field (for newly registered users)
+//     if (user.categoryType) {
+//       categoryName = user.categoryType;
+//     }
+//     // Priority 2: From populated userType object (for older users)
+//     else if (user.userType && typeof user.userType === 'object') {
+//       categoryName = user.userType.categoryType || user.userType.role || 'No Category';
+//     }
+//     // Priority 3: Fallback (shouldn't happen but just in case)
+//     else {
+//       categoryName = 'Customer'; // Default for newly registered users
+//     }
+    
+//     console.log('🔍 User category debug:', {
+//       email: user.email,
+//       categoryType: user.categoryType, // Direct field
+//       userType: user.userType,
+//       userTypeCategory: user.userType?.categoryType,
+//       extractedCategory: categoryName
+//     });
+    
+//     return {
+//       id: user._id,
+//       serialNo: (currentPage - 1) * limit + (index + 1),
+//       name: user.name || `${user.firstName} ${user.lastName}`,
+//       email: user.email,
+//       phone: user.phoneNumber,
+//       status: user.isBlocked ? 'inactive' : 'active',
+//       createdAt: user.createdAt,
+//       categoryType: categoryName,
+//       isEmailVerified: user.isEmailVerified,
+//       firstName: user.firstName,
+//       lastName: user.lastName,
+//       isActive: !user.isBlocked,
+//       originalCategory: user.userType,
+//       address: user.address
+//     };
+//   });
+// }, [users, currentPage, limit]);
+
+
+const dataWithSerial = useMemo(() => {
+  return users.map((user: BackendUser, index: number) => {
+    // FIXED: Correct priority for category
+    let categoryName = 'Customer'; // Default
+    
+    // Priority 1: Check populated userType object FIRST (for older users)
+    if (user.userType && typeof user.userType === 'object') {
+      // User has a populated UserCategory document
+      if (user.userType.categoryType && user.userType.categoryType !== 'Customer') {
+        categoryName = user.userType.categoryType;
+      } else if (user.userType.role && user.userType.role !== 'Customer') {
+        categoryName = user.userType.role;
+      }
+    }
+    // Priority 2: Check direct categoryType field (only for new users without userType)
+    else if (user.categoryType && (!user.userType || user.userType === null)) {
+      categoryName = user.categoryType;
+    }
+    
+    console.log('🔍 User category debug:', {
+      email: user.email,
+      categoryType: user.categoryType, // Direct field from backend
+      hasUserType: !!user.userType,
+      userTypeCategory: user.userType?.categoryType,
+      userTypeRole: user.userType?.role,
+      finalCategory: categoryName
+    });
+    
+    return {
       id: user._id,
       serialNo: (currentPage - 1) * limit + (index + 1),
-      name: `${user.firstName} ${user.lastName}`,
+      name: user.name || `${user.firstName} ${user.lastName}`,
       email: user.email,
       phone: user.phoneNumber,
       status: user.isBlocked ? 'inactive' : 'active',
       createdAt: user.createdAt,
-      category: getCategoryName(user.userType),
+      categoryType: categoryName,
       isEmailVerified: user.isEmailVerified,
       firstName: user.firstName,
       lastName: user.lastName,
       isActive: !user.isBlocked,
       originalCategory: user.userType,
       address: user.address
-    }));
-  }, [users, currentPage, limit]);
+    };
+  });
+}, [users, currentPage, limit]);
+
 
   // Handle Add User button click
   const handleAddUser = () => {

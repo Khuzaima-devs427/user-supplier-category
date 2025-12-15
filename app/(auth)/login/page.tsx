@@ -366,7 +366,7 @@ import { clientService } from '../../app/utils/api-client';
 import { usePermissions } from '../../_components/contexts/PermissionContext';
 
 interface LoginFormData {
-  name: string;
+  // name: string;
   email: string;
   password: string;
   rememberMe: boolean;
@@ -392,7 +392,7 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   const [formData, setFormData] = useState<LoginFormData>({
-    name: '',
+    // name: '',
     email: '',
     password: '',
     rememberMe: false,
@@ -410,10 +410,10 @@ const LoginPage = () => {
   const validateForm = (): boolean => {
     setError('');
 
-    if (!formData.name) {
-      setError('Name is required');
-      return false;
-    }
+    // if (!formData.name) {
+    //   setError('Name is required');
+    //   return false;
+    // }
 
     if (!formData.email) {
       setError('Email address is required');
@@ -425,10 +425,10 @@ const LoginPage = () => {
       return false;
     }
 
-    if (formData.name.trim().length < 2) {
-      setError('Name must be at least 2 characters long');
-      return false;
-    }
+    // if (formData.name.trim().length < 2) {
+    //   setError('Name must be at least 2 characters long');
+    //   return false;
+    // }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
@@ -451,14 +451,14 @@ const LoginPage = () => {
 
     try {
       const loginData = {
-        name: formData.name.trim(),
+        // name: formData.name.trim(),
         email: formData.email,
         password: formData.password,
       };
 
       console.log('🔐 Attempting login with:', { 
         email: loginData.email,
-        nameLength: loginData.name.length,
+        // nameLength: loginData.name.length,
         hasPassword: !!loginData.password,
         isStaticAdminAttempt: loginData.email === STATIC_ADMIN_EMAIL
       });
@@ -611,7 +611,7 @@ const LoginPage = () => {
       });
       
       if (error.response?.status === 401) {
-        setError('Invalid name, email or password. Please try again.');
+        setError('Invalid email or password. Please try again.');
       } else if (error.response?.status === 400) {
         setError(error.response.data?.message || 'Validation failed. Please check all fields.');
       } else if (error.response?.status === 404) {
@@ -664,7 +664,7 @@ const LoginPage = () => {
           )}
 
           <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
+            {/* <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                 Full Name *
               </label>
@@ -683,7 +683,7 @@ const LoginPage = () => {
               <p className="mt-1 text-xs text-gray-500">
                 Enter the exact name used during registration
               </p>
-            </div>
+            </div> */}
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">

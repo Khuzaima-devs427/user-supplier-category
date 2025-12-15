@@ -199,7 +199,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import Providers from './providers' // ADD THIS IMPORT
 
-const inter = Inter({ subsets: ['latin'] })
+// const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'My App',
@@ -213,7 +213,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body>
         <Providers> {/* WRAP CHILDREN WITH PROVIDERS */}
           {children}
         </Providers>
