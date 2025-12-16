@@ -410,7 +410,7 @@ import DeleteConfirmationModal from '../../../../_components/_modals/DeleteConfi
 import ViewDetailsModal from '../../../../_components/_view-modal/ViewDetailsModal';
 import { clientService } from '../../../../app/utils/api-client';
 import { usePermissions } from '../../../../_components/contexts/PermissionContext';
-
+import { toast } from 'react-toastify';
 // API Response interfaces
 interface ApiResponse<T = any> {
   success: boolean;
@@ -552,7 +552,7 @@ const SuppliersPage = () => {
       });
     } catch (error) {
       console.error('Error updating status:', error);
-      alert(`Failed to update status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to update status: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setUpdatingStatus(null);
     }
@@ -579,7 +579,7 @@ const SuppliersPage = () => {
       });
     } catch (error) {
       console.error('Error updating email verification:', error);
-      alert(`Failed to update email verification: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to update email verification: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setUpdatingEmailVerification(null);
     }
@@ -589,7 +589,7 @@ const SuppliersPage = () => {
   const handleEditSupplier = (supplier: any) => {
     // Check if user has edit permission
     if (!hasPermission('suppliers.edit')) {
-      alert('You do not have permission to edit suppliers');
+      toast.error('You do not have permission to edit suppliers');
       return;
     }
     
@@ -620,7 +620,7 @@ const SuppliersPage = () => {
     
     // Check if user has delete permission
     if (!hasPermission('suppliers.delete')) {
-      alert('You do not have permission to delete suppliers');
+      toast.error('You do not have permission to delete suppliers');
       setDeletingSupplier(null);
       return;
     }
@@ -646,7 +646,7 @@ const SuppliersPage = () => {
   const handleStatusChange = (supplier: any, status: 'active' | 'inactive') => {
     // Check if user has edit permission
     if (!hasPermission('suppliers.edit')) {
-      alert('You do not have permission to update supplier status');
+      toast.error('You do not have permission to update supplier status');
       return;
     }
     updateSupplierStatus(supplier.id, status);
@@ -656,7 +656,7 @@ const SuppliersPage = () => {
   const handleEmailVerificationChange = (supplier: any, isEmailVerified: boolean) => {
     // Check if user has edit permission
     if (!hasPermission('suppliers.edit')) {
-      alert('You do not have permission to update email verification');
+      toast.error('You do not have permission to update email verification');
       return;
     }
     updateEmailVerification(supplier.id, isEmailVerified);
@@ -767,7 +767,7 @@ const SuppliersPage = () => {
   const handleAddSupplier = () => {
     // Check if user has create permission
     if (!hasPermission('suppliers.create')) {
-      alert('You do not have permission to add suppliers');
+      toast.error('You do not have permission to add suppliers');
       return;
     }
     router.push('/supplier/view-suppliers/add-supplier');
@@ -779,7 +779,7 @@ const SuppliersPage = () => {
     onDelete: (supplier) => {
       // Check if user has delete permission
       if (!hasPermission('suppliers.delete')) {
-        alert('You do not have permission to delete suppliers');
+        toast.error('You do not have permission to delete suppliers');
         return;
       }
       console.log('Delete supplier:', supplier);

@@ -535,7 +535,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import LeafletMap from '../../../../../_components/_leaflet_map/map';
 import Link from 'next/link';
 import { clientService } from '../../../../../app/utils/api-client';
-
+import { toast } from 'react-toastify';
 interface Address {
   country?: string;
   state?: string;
@@ -671,7 +671,7 @@ const AddUserPage = () => {
     setIsLoading(true);
 
     if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match!');
+      toast.error('Passwords do not match!');
       setIsLoading(false);
       return;
     }
@@ -715,14 +715,14 @@ const AddUserPage = () => {
           refetchType: 'active' 
         });
         
-        alert('✅ User created successfully!');
+        toast.error('✅ User created successfully!');
         router.push('/user/user-view');
       } else {
-        alert(result.message || 'Failed to create user');
+        toast.error(result.message || 'Failed to create user');
       }
     } catch (error) {
       console.error('❌ Error creating user:', error);
-      alert('Error creating user. Please check your connection.');
+      toast.error('Error creating user. Please check your connection.');
     } finally {
       setIsLoading(false);
     }

@@ -1256,7 +1256,7 @@ import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
 import LeafletMap from '../../../../../_components/_leaflet_map/map';
 import { clientService } from '../../../../../app/utils/api-client';
-
+import { toast } from 'react-toastify';
 interface Address {
   country?: string;
   state?: string;
@@ -1485,7 +1485,7 @@ function EditSupplierContent() {
         }
       } catch (error) {
         console.error('❌ Error fetching supplier:', error);
-        alert(`Error loading supplier data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        toast.error(`Error loading supplier data: ${error instanceof Error ? error.message : 'Unknown error'}`);
       } finally {
         setIsFetching(false);
       }
@@ -1506,7 +1506,7 @@ function EditSupplierContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supplierId) {
-      alert('No supplier ID provided');
+      toast.error('No supplier ID provided');
       return;
     }
 
@@ -1557,15 +1557,15 @@ function EditSupplierContent() {
           refetchType: 'active' 
         });
         
-        alert('Supplier updated successfully!');
+        toast.success('Supplier updated successfully!');
         router.push('/supplier/view-suppliers');
       } else {
         console.error('❌ Update failed:', result.message);
-        alert(result.message || 'Failed to update supplier');
+        toast.error(result.message || 'Failed to update supplier');
       }
     } catch (error) {
       console.error('❌ Error updating supplier:', error);
-      alert(`Error updating supplier: ${error instanceof Error ? error.message : 'Please check your connection.'}`);
+      toast.error(`Error updating supplier: ${error instanceof Error ? error.message : 'Please check your connection.'}`);
     } finally {
       setIsLoading(false);
     }

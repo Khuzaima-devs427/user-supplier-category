@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { clientService } from '../../app/utils/api-client';
-
+import { toast } from 'react-toastify';
 interface RegisterFormData {
   name: string;
   email: string;
@@ -131,7 +131,7 @@ const RegisterPage = () => {
 
       if (result.success) {
         setSuccess('Registration successful! You can now login.');
-        
+        toast.success('Registration successfull');
         // Store token if available
         if (result.data?.token) {
           localStorage.setItem('token', result.data.token);

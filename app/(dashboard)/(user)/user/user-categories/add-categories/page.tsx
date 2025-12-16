@@ -484,7 +484,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { clientService } from '../../../../../app/utils/api-client';
-
+import { toast } from 'react-toastify';
 interface CategoryFormData {
   role: string;
   categoryType: string;
@@ -559,7 +559,7 @@ const AddCategoryPage = () => {
       }
     } catch (error) {
       console.error('Error fetching system permissions:', error);
-      alert('Failed to load system permissions');
+      toast.error('Failed to load system permissions');
     } finally {
       setLoadingPermissions(false);
     }
@@ -709,7 +709,7 @@ const AddCategoryPage = () => {
           refetchType: 'active' 
         });
         
-        alert('Category created successfully!');
+        toast.success('Category created successfully!');
         setFormData({
           role: '',
           categoryType: '',
@@ -718,11 +718,11 @@ const AddCategoryPage = () => {
         });
         router.push('/user/user-categories');
       } else {
-        alert(result.message || 'Failed to create category');
+        toast.error(result.message || 'Failed to create category');
       }
     } catch (error) {
       console.error('❌ Error creating category:', error);
-      alert('Error creating category. Please check your connection.');
+      toast.error('Error creating category. Please check your connection.');
     } finally {
       setIsLoading(false);
     }

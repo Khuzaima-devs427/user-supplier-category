@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import Link from 'next/link';
 import { clientService } from '../../../../../app/utils/api-client';
-
+import { toast } from 'react-toastify';
 interface SupplierCategoryFormData {
   name: string;
   description: string;
@@ -81,13 +81,13 @@ const AddSupplierCategoryPage = () => {
   const processImageFile = (file: File) => {
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+      toast.error('Please select an image file');
       return;
     }
 
     // Validate file size (10MB)
     if (file.size > 10 * 1024 * 1024) {
-      alert('File size must be less than 10MB');
+      toast.error('File size must be less than 10MB');
       return;
     }
 
@@ -146,7 +146,7 @@ const AddSupplierCategoryPage = () => {
     try {
       // Validate that a product category is selected
       if (formData.productCategories.length === 0) {
-        alert('Please select a product category');
+        toast.error('Please select a product category');
         setIsLoading(false);
         return;
       }
@@ -190,7 +190,7 @@ const AddSupplierCategoryPage = () => {
           refetchType: 'active' 
         });
         
-        alert('Supplier category created successfully!');
+        toast.success('Supplier category created successfully!');
         setFormData({
           name: '',
           description: '',
@@ -201,11 +201,11 @@ const AddSupplierCategoryPage = () => {
         setImagePreview(null);
         router.push('/supplier/supplier-categories');
       } else {
-        alert(result.message || 'Failed to create supplier category');
+        toast.error(result.message || 'Failed to create supplier category');
       }
     } catch (error) {
       console.error('❌ Error creating supplier category:', error);
-      alert('Error creating supplier category. Please check your connection.');
+      toast.error('Error creating supplier category. Please check your connection.');
     } finally {
       setIsLoading(false);
     }

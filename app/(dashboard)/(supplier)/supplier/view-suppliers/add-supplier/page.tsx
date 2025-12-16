@@ -525,7 +525,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import LeafletMap from '../../../../../_components/_leaflet_map/map';
 import Link from 'next/link';
 import { clientService } from '../../../../../app/utils/api-client';
-
+import { toast } from 'react-toastify';
 interface Address {
   country?: string;
   state?: string;
@@ -652,7 +652,7 @@ const AddSupplierPage = () => {
 
     // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match!');
+      toast.error('Passwords do not match!');
       setIsLoading(false);
       return;
     }
@@ -695,14 +695,14 @@ const AddSupplierPage = () => {
           refetchType: 'active' 
         });
         
-        alert('✅ Supplier created successfully!');
+        toast.success('✅ Supplier created successfully!');
         router.push('/supplier/view-suppliers');
       } else {
-        alert(result.message || 'Failed to create supplier');
+        toast.error(result.message || 'Failed to create supplier');
       }
     } catch (error) {
       console.error('❌ Error creating supplier:', error);
-      alert('Error creating supplier. Please check your connection.');
+      toast.error('Error creating supplier. Please check your connection.');
     } finally {
       setIsLoading(false);
     }

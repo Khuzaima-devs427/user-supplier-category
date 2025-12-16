@@ -364,7 +364,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { clientService } from '../../app/utils/api-client';
 import { usePermissions } from '../../_components/contexts/PermissionContext';
-
+import { toast } from 'react-toastify';
 interface LoginFormData {
   // name: string;
   email: string;
@@ -468,6 +468,7 @@ const LoginPage = () => {
       try {
         response = await clientService.post<ApiResponse>('/login', loginData);
         console.log('✅ Login successful via /login endpoint');
+        toast.success('Login successfull');
       } catch (err: any) {
         console.log('❌ /login failed, trying /auth/login:', err.message);
         try {

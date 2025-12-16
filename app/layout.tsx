@@ -198,7 +198,8 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import Providers from './providers' // ADD THIS IMPORT
-
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 // const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
@@ -216,6 +217,18 @@ export default function RootLayout({
       <body>
         <Providers> {/* WRAP CHILDREN WITH PROVIDERS */}
           {children}
+      <ToastContainer
+        position="top-right"
+        autoClose={3500}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
         </Providers>
       </body>
     </html>

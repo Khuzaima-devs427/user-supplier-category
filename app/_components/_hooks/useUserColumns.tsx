@@ -357,7 +357,7 @@ interface User {
   name: string;
   email: string;
   phone: string;
-  categoryType: string;
+  category: string | { id: string; name: string };
   status: 'active' | 'inactive';
   isEmailVerified: boolean;
   createdAt: string;
@@ -526,18 +526,18 @@ export const useUserColumns = ({
   };
 
   // Safe category formatter function
-  const formatCategory = (categoryType: string | { id: string; name: string }): string => {
-    if (!categoryType) {
+  const formatCategory = (category: string | { id: string; name: string }): string => {
+    if (!category) {
       return 'No Category';
     }
     
-    if (typeof categoryType === 'string') {
-      return categoryType
+    if (typeof category === 'string') {
+      return category
         .replace(/_/g, ' ')
         .replace(/\b\w/g, (char) => char.toUpperCase());
     }
     
-    return categoryType.name
+    return category.name
       .replace(/_/g, ' ')
       .replace(/\b\w/g, (char) => char.toUpperCase());
   };
@@ -563,11 +563,11 @@ export const useUserColumns = ({
 
       {
         name: 'Category',
-        selector: (row: User) => row.categoryType,
+        selector: (row: User) => row.category,
         sortable: true,
         cell: (row: User) => (
           <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
-            {formatCategory(row.categoryType)}
+            {formatCategory(row.category)}
           </span>
         ),
       },

@@ -655,7 +655,7 @@ import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
 import LeafletMap from '../../../../../_components/_leaflet_map/map';
 import { clientService } from '../../../../../app/utils/api-client';
-
+import { toast } from 'react-toastify';
 interface Address {
   country?: string;
   state?: string;
@@ -916,7 +916,7 @@ function EditUserContent() {
         }
       } catch (error) {
         console.error('❌ Error fetching user:', error);
-        alert('Error loading user data');
+        toast.error('Error loading user data');
       } finally {
         setIsFetching(false);
       }
@@ -952,7 +952,7 @@ function EditUserContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId) {
-      alert('No user ID provided');
+      toast.error('No user ID provided');
       return;
     }
 
@@ -986,14 +986,14 @@ function EditUserContent() {
           refetchType: 'active' 
         });
         
-        alert('✅ User updated successfully!');
+        toast.success('✅ User updated successfully!');
         router.push('/user/user-view');
       } else {
-        alert(result.message || 'Failed to update user');
+        toast.error(result.message || 'Failed to update user');
       }
     } catch (error) {
       console.error('❌ Error updating user:', error);
-      alert('Error updating user. Please check your connection.');
+      toast.error('Error updating user. Please check your connection.');
     } finally {
       setIsLoading(false);
     }

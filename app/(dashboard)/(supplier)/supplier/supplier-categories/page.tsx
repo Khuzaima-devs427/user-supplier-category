@@ -12,7 +12,7 @@ import { ProductTypesFilter, StatusFilter } from '../../../../_components/_filte
 import DateRangeFilter from '../../../../_components/_filters/DateRangeFilter';
 import { clientService } from '../../../../app/utils/api-client';
 import { usePermissions } from '../../../../_components/contexts/PermissionContext';
-
+import { toast } from 'react-toastify';
 // API Response interfaces
 interface ApiResponse<T = any> {
   success: boolean;
@@ -151,7 +151,7 @@ const SupplierCategoriesPage = () => {
   const handleEditCategory = (category: any) => {
     // Check if user has edit permission
     if (!hasPermission('supplier_categories.edit')) {
-      alert('You do not have permission to edit supplier categories');
+      toast.error('You do not have permission to edit supplier categories');
       return;
     }
     router.push(`/supplier/supplier-categories/edit-supplier-category?id=${category.id}`);
@@ -163,7 +163,7 @@ const SupplierCategoriesPage = () => {
     
     // Check if user has delete permission
     if (!hasPermission('supplier_categories.delete')) {
-      alert('You do not have permission to delete supplier categories');
+      toast.error('You do not have permission to delete supplier categories');
       setDeletingCategory(null);
       return;
     }
@@ -186,7 +186,7 @@ const SupplierCategoriesPage = () => {
       console.log('✅ Supplier category deleted successfully');
     } catch (error) {
       console.error('❌ Error deleting supplier category:', error);
-      alert(`Failed to delete supplier category: ${error instanceof Error ? error.message : 'Unknown error'}`);
+     toast.error(`Failed to delete supplier category: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsDeleting(false);
     }
@@ -196,7 +196,7 @@ const SupplierCategoriesPage = () => {
   const handleStatusChange = async (category: any, status: 'active' | 'inactive') => {
     // Check if user has edit permission
     if (!hasPermission('supplier_categories.edit')) {
-      alert('You do not have permission to update supplier category status');
+     toast.error('You do not have permission to update supplier category status');
       return;
     }
     
@@ -220,7 +220,7 @@ const SupplierCategoriesPage = () => {
       console.log('✅ Supplier category status updated successfully');
     } catch (error) {
       console.error('❌ Error updating supplier category status:', error);
-      alert(`Failed to update supplier category status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+     toast.error(`Failed to update supplier category status: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -310,7 +310,7 @@ const SupplierCategoriesPage = () => {
   const handleAddCategory = () => {
     // Check if user has create permission
     if (!hasPermission('supplier_categories.create')) {
-      alert('You do not have permission to add supplier categories');
+     toast.error('You do not have permission to add supplier categories');
       return;
     }
     router.push('/supplier/supplier-categories/add-supplier-category');
@@ -322,7 +322,7 @@ const SupplierCategoriesPage = () => {
     onDelete: (category) => {
       // Check if user has delete permission
       if (!hasPermission('supplier_categories.delete')) {
-        alert('You do not have permission to delete supplier categories');
+       toast.error('You do not have permission to delete supplier categories');
         return;
       }
       console.log('Delete supplier category:', category);

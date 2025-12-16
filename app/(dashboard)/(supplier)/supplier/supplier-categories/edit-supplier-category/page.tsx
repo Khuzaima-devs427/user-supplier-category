@@ -665,7 +665,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { clientService } from '../../../../../app/utils/api-client';
-
+import { toast } from 'react-toastify';
 interface SupplierCategoryFormData {
   name: string;
   description: string;
@@ -778,12 +778,12 @@ function EditSupplierCategoryContent() {
             setExistingImage(category.image);
           }
         } else {
-          alert(result.message || 'Failed to fetch category data');
+        toast.error(result.message || 'Failed to fetch category data');
           router.push('/supplier/supplier-categories');
         }
       } catch (error) {
         console.error('❌ Error fetching supplier category:', error);
-        alert('Error fetching supplier category. Please check your connection.');
+        toast.error('Error fetching supplier category. Please check your connection.');
         router.push('/supplier/supplier-categories');
       } finally {
         setIsFetching(false);
@@ -828,13 +828,13 @@ function EditSupplierCategoryContent() {
   const processImageFile = (file: File) => {
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+      toast.error('Please select an image file');
       return;
     }
 
     // Validate file size (10MB)
     if (file.size > 10 * 1024 * 1024) {
-      alert('File size must be less than 10MB');
+      toast.error('File size must be less than 10MB');
       return;
     }
 
@@ -902,7 +902,7 @@ function EditSupplierCategoryContent() {
     e.preventDefault();
     
     if (!categoryId) {
-      alert('Category ID is missing');
+      toast.error('Category ID is missing');
       return;
     }
 
@@ -911,7 +911,7 @@ function EditSupplierCategoryContent() {
     try {
       // Validate that a product category is selected
       if (formData.productCategories.length === 0) {
-        alert('Please select a product category');
+       toast.error('Please select a product category');
         setIsLoading(false);
         return;
       }
@@ -959,14 +959,14 @@ function EditSupplierCategoryContent() {
           refetchType: 'active' 
         });
         
-        alert('Supplier category updated successfully!');
+        toast.success('Supplier category updated successfully!');
         router.push('/supplier/supplier-categories');
       } else {
-        alert(result.message || 'Failed to update supplier category');
+        toast.error(result.message || 'Failed to update supplier category');
       }
     } catch (error) {
       console.error('❌ Error updating supplier category:', error);
-      alert('Error updating supplier category. Please check your connection.');
+      toast.error('Error updating supplier category. Please check your connection.');
     } finally {
       setIsLoading(false);
     }

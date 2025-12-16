@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { clientService } from '../../../../../app/utils/api-client';
-
+import { toast } from 'react-toastify';
 interface CategoryFormData {
   role: string;
   categoryType: string;
@@ -123,7 +123,7 @@ function EditCategoryContent() {
       }
     } catch (error) {
       console.error('❌ Error fetching system permissions:', error);
-      alert('Failed to load system permissions');
+      toast.error('Failed to load system permissions');
     } finally {
       setLoadingPermissions(false);
     }
@@ -131,7 +131,7 @@ function EditCategoryContent() {
 
   const fetchCategory = async () => {
     if (!categoryId) {
-      alert('Category ID is missing');
+      toast.error('Category ID is missing');
       router.push('/user/user-categories');
       return;
     }
@@ -156,7 +156,7 @@ function EditCategoryContent() {
       }
     } catch (error) {
       console.error('❌ Error fetching category:', error);
-      alert(`Failed to load category: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to load category: ${error instanceof Error ? error.message : 'Unknown error'}`);
       router.push('/user/user-categories');
     } finally {
       setIsFetching(false);
@@ -248,7 +248,7 @@ function EditCategoryContent() {
     e.preventDefault();
     
     if (!categoryId) {
-      alert('Category ID is missing');
+      toast.error('Category ID is missing');
       return;
     }
 
@@ -280,14 +280,14 @@ function EditCategoryContent() {
           refetchType: 'active' 
         });
         
-        alert('Category updated successfully!');
+        toast.success('Category updated successfully!');
         router.push('/user/user-categories');
       } else {
         alert(result.message || 'Failed to update category');
       }
     } catch (error) {
       console.error('❌ Error updating category:', error);
-      alert('Error updating category. Please check your connection.');
+      toast.error('Error updating category. Please check your connection.');
     } finally {
       setIsLoading(false);
     }

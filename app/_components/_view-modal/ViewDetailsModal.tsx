@@ -1612,13 +1612,13 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                   </p>
                   {categoryType && (
                     <p className="text-sm text-purple-600 mt-1">
-                      Type: {categoryType}
+                      Category: {categoryType}
                     </p>
                   )}
                 </div>
                 {userData?.categoryType && (
                   <div>
-                    <p className="text-sm font-medium text-gray-500 mb-1">Category Type</p>
+                    <p className="text-sm font-medium text-gray-500 mb-1">Category Role</p>
                     <p className="text-sm font-semibold text-gray-900">{userData.categoryType}</p>
                   </div>
                 )}

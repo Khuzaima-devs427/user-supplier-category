@@ -827,6 +827,7 @@
 
 
 
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -840,17 +841,16 @@ import DeleteConfirmationModal from '../../../../_components/_modals/DeleteConfi
 import ViewDetailsModal from '../../../../_components/_view-modal/ViewDetailsModal';
 import { clientService } from '../../../../app/utils/api-client';
 import { usePermissions } from '../../../../_components/contexts/PermissionContext'; // ADD PERMISSIONS IMPORT
-
+import { toast } from 'react-toastify';
 // Updated interface for backend response with new model
 interface BackendUser {
   _id: string;
-  name: string;  // <-- Add this
+  name:string;
   firstName?: string;
   lastName?: string;
   email: string;
   phoneNumber: string;
   userType: any;
-  categoryType: string;
   address?: any;
   isBlocked: boolean;
   isEmailVerified: boolean;
@@ -931,7 +931,7 @@ const UsersPage = () => {
     }
     
     if (typeof userType === 'object') {
-      return userType.categoryType || userType._id || 'Unnamed Category';
+      return userType.role || userType._id || 'Unnamed Category';
     }
     
     return 'No Category';
@@ -1052,7 +1052,7 @@ const UsersPage = () => {
       console.log(`User ${userId} status successfully updated to: ${status}`);
     } catch (error) {
       console.error('Error updating user status:', error);
-      alert(`Failed to update user status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to update user status: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setUpdatingStatus(null);
     }
@@ -1062,7 +1062,7 @@ const UsersPage = () => {
   const updateEmailVerification = async (userId: string, isEmailVerified: boolean): Promise<void> => {
     // Check permission
     if (!hasUserEditPermission) {
-      alert('You do not have permission to update email verification');
+      toast.error('You do not have permission to update email verification');
       return;
     }
     
@@ -1089,7 +1089,7 @@ const UsersPage = () => {
       console.log(`User ${userId} email verification successfully updated to: ${isEmailVerified}`);
     } catch (error) {
       console.error('Error updating email verification:', error);
-      alert(`Failed to update email verification: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to update email verification: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setUpdatingEmailVerification(null);
     }
@@ -1109,7 +1109,7 @@ const UsersPage = () => {
   const handleEditUser = (user: any) => {
     // Check permission
     if (!hasUserEditPermission) {
-      alert('You do not have permission to edit users');
+      toast.error('You do not have permission to edit users');
       return;
     }
     router.push(`/user/user-view/edit-user?id=${user.id}`);
@@ -1119,7 +1119,7 @@ const UsersPage = () => {
   const handleViewUser = (user: any) => {
     // Check permission (view is usually allowed if user can see the list)
     if (!hasUserViewPermission) {
-      alert('You do not have permission to view user details');
+      toast.error('You do not have permission to view user details');
       return;
     }
     setViewingUser(user);
@@ -1131,7 +1131,7 @@ const UsersPage = () => {
     
     // Check permission
     if (!hasUserDeletePermission) {
-      alert('You do not have permission to delete users');
+      toast.error('You do not have permission to delete users');
       setDeletingUser(null);
       return;
     }
@@ -1149,7 +1149,7 @@ const UsersPage = () => {
       console.log('User deleted successfully');
     } catch (error) {
       console.error('Error deleting user:', error);
-      alert(`Failed to delete user: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to delete user: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsDeleting(false);
     }
@@ -1168,105 +1168,30 @@ const UsersPage = () => {
   };
 
   // Transform backend data to table format
-// const dataWithSerial = useMemo(() => {
-//   return users.map((user: BackendUser, index: number) => {
-//     // Get category from either direct categoryType field OR userType object
-//     let categoryName = 'No Category';
-    
-//     // Priority 1: Direct categoryType field (for newly registered users)
-//     if (user.categoryType) {
-//       categoryName = user.categoryType;
-//     }
-//     // Priority 2: From populated userType object (for older users)
-//     else if (user.userType && typeof user.userType === 'object') {
-//       categoryName = user.userType.categoryType || user.userType.role || 'No Category';
-//     }
-//     // Priority 3: Fallback (shouldn't happen but just in case)
-//     else {
-//       categoryName = 'Customer'; // Default for newly registered users
-//     }
-    
-//     console.log('🔍 User category debug:', {
-//       email: user.email,
-//       categoryType: user.categoryType, // Direct field
-//       userType: user.userType,
-//       userTypeCategory: user.userType?.categoryType,
-//       extractedCategory: categoryName
-//     });
-    
-//     return {
-//       id: user._id,
-//       serialNo: (currentPage - 1) * limit + (index + 1),
-//       name: user.name || `${user.firstName} ${user.lastName}`,
-//       email: user.email,
-//       phone: user.phoneNumber,
-//       status: user.isBlocked ? 'inactive' : 'active',
-//       createdAt: user.createdAt,
-//       categoryType: categoryName,
-//       isEmailVerified: user.isEmailVerified,
-//       firstName: user.firstName,
-//       lastName: user.lastName,
-//       isActive: !user.isBlocked,
-//       originalCategory: user.userType,
-//       address: user.address
-//     };
-//   });
-// }, [users, currentPage, limit]);
-
-
-const dataWithSerial = useMemo(() => {
-  return users.map((user: BackendUser, index: number) => {
-    // FIXED: Correct priority for category
-    let categoryName = 'Customer'; // Default
-    
-    // Priority 1: Check populated userType object FIRST (for older users)
-    if (user.userType && typeof user.userType === 'object') {
-      // User has a populated UserCategory document
-      if (user.userType.categoryType && user.userType.categoryType !== 'Customer') {
-        categoryName = user.userType.categoryType;
-      } else if (user.userType.role && user.userType.role !== 'Customer') {
-        categoryName = user.userType.role;
-      }
-    }
-    // Priority 2: Check direct categoryType field (only for new users without userType)
-    else if (user.categoryType && (!user.userType || user.userType === null)) {
-      categoryName = user.categoryType;
-    }
-    
-    console.log('🔍 User category debug:', {
-      email: user.email,
-      categoryType: user.categoryType, // Direct field from backend
-      hasUserType: !!user.userType,
-      userTypeCategory: user.userType?.categoryType,
-      userTypeRole: user.userType?.role,
-      finalCategory: categoryName
-    });
-    
-    return {
+  const dataWithSerial = useMemo(() => {
+    return users.map((user: BackendUser, index: number) => ({
       id: user._id,
       serialNo: (currentPage - 1) * limit + (index + 1),
-      name: user.name || `${user.firstName} ${user.lastName}`,
+      name: user.name || ` ${user.firstName} ${user.lastName} `,
       email: user.email,
       phone: user.phoneNumber,
       status: user.isBlocked ? 'inactive' : 'active',
       createdAt: user.createdAt,
-      categoryType: categoryName,
+      category: getCategoryName(user.userType),
       isEmailVerified: user.isEmailVerified,
       firstName: user.firstName,
       lastName: user.lastName,
       isActive: !user.isBlocked,
       originalCategory: user.userType,
       address: user.address
-    };
-  });
-}, [users, currentPage, limit]);
-
+    }));
+  }, [users, currentPage, limit]);
 
   // Handle Add User button click
   const handleAddUser = () => {
     // Check permission
     if (!hasUserCreatePermission) {
-      alert('You do not have permission to add users');
+      toast.error('You do not have permission to add users');
       return;
     }
     router.push('/user/user-view/add-user');
@@ -1276,7 +1201,7 @@ const dataWithSerial = useMemo(() => {
     onEdit: (user) => {
       // Check permission in callback
       if (!hasUserEditPermission) {
-        alert('You do not have permission to edit users');
+        toast.error('You do not have permission to edit users');
         return;
       }
       handleEditUser(user);
@@ -1284,7 +1209,7 @@ const dataWithSerial = useMemo(() => {
     onDelete: (user) => {
       // Check permission in callback
       if (!hasUserDeletePermission) {
-        alert('You do not have permission to delete users');
+        toast.error('You do not have permission to delete users');
         return;
       }
       console.log('Delete user:', user);
@@ -1293,7 +1218,7 @@ const dataWithSerial = useMemo(() => {
     onView: (user) => {
       // Check permission in callback
       if (!hasUserViewPermission) {
-        alert('You do not have permission to view user details');
+        toast.error('You do not have permission to view user details');
         return;
       }
       handleViewUser(user);

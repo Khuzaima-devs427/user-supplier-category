@@ -760,7 +760,7 @@ import { TypeFilter, StatusFilter } from '../../../../_components/_filters/Statu
 import DateRangeFilter from '../../../../_components/_filters/DateRangeFilter';
 import { clientService } from '../../../../app/utils/api-client';
 import { usePermissions } from '../../../../_components/contexts/PermissionContext';
-
+import { toast } from 'react-toastify';
 // API Response interfaces
 interface ApiResponse<T = any> {
   success: boolean;
@@ -917,7 +917,7 @@ const CategoriesPage = () => {
   const handleEditCategory = (category: any) => {
     // Check if user has edit permission
     if (!hasPermission('user_categories.edit')) {
-      alert('You do not have permission to edit categories');
+      toast.error('You do not have permission to edit categories');
       return;
     }
     router.push(`/user/user-categories/edit-category?id=${category.id}`);
@@ -929,7 +929,7 @@ const CategoriesPage = () => {
     
     // Check if user has delete permission
     if (!hasPermission('user_categories.delete')) {
-      alert('You do not have permission to delete categories');
+      toast.error('You do not have permission to delete categories');
       setDeletingCategory(null);
       return;
     }
@@ -952,7 +952,7 @@ const CategoriesPage = () => {
       console.log('✅ Category deleted successfully');
     } catch (error) {
       console.error('❌ Error deleting category:', error);
-      alert(`Failed to delete category: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to delete category: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsDeleting(false);
     }
@@ -962,7 +962,7 @@ const CategoriesPage = () => {
   const handleStatusChange = async (category: any, status: 'active' | 'inactive') => {
     // Check if user has edit permission
     if (!hasPermission('user_categories.edit')) {
-      alert('You do not have permission to update category status');
+      toast.error('You do not have permission to update category status');
       return;
     }
     
@@ -984,7 +984,7 @@ const CategoriesPage = () => {
       console.log('✅ Category status updated successfully');
     } catch (error) {
       console.error('❌ Error updating category status:', error);
-      alert(`Failed to update category status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to update category status: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -1069,7 +1069,7 @@ const CategoriesPage = () => {
   const handleAddCategory = () => {
     // Check if user has create permission
     if (!hasPermission('user_categories.create')) {
-      alert('You do not have permission to add categories');
+      toast.error('You do not have permission to add categories');
       return;
     }
     router.push('/user/user-categories/add-categories');
@@ -1081,7 +1081,7 @@ const CategoriesPage = () => {
     onDelete: (category) => {
       // Check if user has delete permission
       if (!hasPermission('user_categories.delete')) {
-        alert('You do not have permission to delete categories');
+        toast.error('You do not have permission to delete categories');
         return;
       }
       console.log('Delete category:', category);
