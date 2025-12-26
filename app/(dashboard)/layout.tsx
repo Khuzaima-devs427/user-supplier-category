@@ -203,7 +203,7 @@
 import type { Metadata } from "next";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarInset, SidebarTrigger, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton } from "../../components/ui/sidebar";
 import Providers from '../providers';
-import { Home, Settings, Users, BarChart3, Folder, Eye, Users2, ChevronDown, Truck, LogOut } from "lucide-react";
+import { Home, Settings, Users, BarChart3, Folder, Eye, Users2, ChevronDown, Truck, LogOut, FileText } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -391,6 +391,15 @@ export default function RootLayout({
                 
                 {/* Supplier Menu */}
                 <SupplierMenu/>
+
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <a href="/content-management">
+                      <FileText className="h-4 w-4" />
+                      <span>Content Management</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
 
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>

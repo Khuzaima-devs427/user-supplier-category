@@ -1,5 +1,9 @@
+
+
+// // _components/_data-grid/DataGridWrapper.tsx
 // import React, { ReactNode, useState } from 'react';
 // import DataGrid from './DataGrid';
+// import { usePermissions } from '../contexts/PermissionContext';
 
 // interface DataGridWrapperProps<T> {
 //   title: string;
@@ -30,18 +34,32 @@
   
 //   // Export/Import
 //   hasExportButton?: boolean;
+//   exportButtonPermission?: string;
 //   onExport?: () => void;
 //   hasImportButton?: boolean;
+//   importButtonPermission?: string;
 //   onImport?: () => void;
   
 //   // Permissions
-//   allPermissions?: string[];
+//   allPermissions?: { [key: string]: boolean };
   
 //   // Selection
-//   onSelectedRowsChange?: (selected: { allSelected: boolean; selectedCount: number; selectedRows: T[] }) => void;
+//   // onSelectedRowsChange?: (selected: { allSelected: boolean; selectedCount: number; selectedRows: T[] }) => void;
   
 //   // Custom actions
 //   customActions?: ReactNode;
+  
+//   // Row actions
+//   enableRowActions?: boolean;
+//   onEdit?: (row: T) => void;
+//   onDelete?: (row: T) => void;
+//   editPermission?: string;
+//   deletePermission?: string;
+  
+//   // Bulk actions
+// //   enableBulkActions?: boolean;
+// //   onBulkDelete?: (selectedRows: T[]) => void;
+// //   bulkDeletePermission?: string;
 // }
 
 // const DataGridWrapper = <T,>({
@@ -65,21 +83,140 @@
 //   addButtonText = "Add New",
 //   addButtonPermission,
 //   hasExportButton = false,
+//   exportButtonPermission = 'export',
 //   onExport,
 //   hasImportButton = false,
+//   importButtonPermission = 'import',
 //   onImport,
-//   allPermissions = [],
-//   onSelectedRowsChange,
-//   customActions
+//   allPermissions,
+//   // onSelectedRowsChange,
+//   customActions,
+//   enableRowActions = false,
+//   onEdit,
+//   onDelete,
+//   editPermission,
+//   deletePermission,
+//   // enableBulkActions = false,
+//   // onBulkDelete,
+//   // bulkDeletePermission
 // }: DataGridWrapperProps<T>) => {
 //   const [filtersExpanded, setFiltersExpanded] = useState(defaultFiltersExpanded);
+//   const [selectedRows, setSelectedRows] = useState<T[]>([]);
+  
+//   // Use permissions from context if not provided explicitly
+//   const { permissions: contextPermissions } = usePermissions();
+  
+//   // Use provided permissions or fall back to context permissions
+//   const effectivePermissions = allPermissions || contextPermissions;
 
-//   const hasPermission = (permission: string) => {
-//     return !permission || allPermissions.includes(permission);
+//   /**
+//    * Check if user has specific permission
+//    * @param permission - The permission key (e.g., 'users.create')
+//    * @returns boolean
+//    */
+//   const hasPermission = (permission: string | undefined): boolean => {
+//     if (!permission) return true; // No permission required
+    
+//     // If user is static admin, they have ALL permissions
+//     if (effectivePermissions && effectivePermissions.isStaticAdmin === true) {
+//       console.log(`✅ DataGridWrapper: Static admin override for permission: ${permission}`);
+//       return true;
+//     }
+    
+//     // Check in effective permissions
+//     if (effectivePermissions && effectivePermissions[permission] === true) {
+//       return true;
+//     }
+    
+//     // Alternative: If permissions is an array of strings
+//     if (Array.isArray(effectivePermissions) && effectivePermissions.includes(permission)) {
+//       return true;
+//     }
+    
+//     console.log(`❌ DataGridWrapper: No permission for: ${permission}`);
+//     return false;
 //   };
 
+//   /**
+//    * Check if user has ANY of the given permissions
+//    * @param permissions - Array of permission keys
+//    * @returns boolean
+//    */
+//   const hasAnyPermission = (permissions: string[]): boolean => {
+//     return permissions.some(permission => hasPermission(permission));
+//   };
+
+//   /**
+//    * Check if user has ALL of the given permissions
+//    * @param permissions - Array of permission keys
+//    * @returns boolean
+//    */
+//   const hasAllPermissions = (permissions: string[]): boolean => {
+//     return permissions.every(permission => hasPermission(permission));
+//   };
+
+//   // Handle row selection
+//   // const handleSelectedRowsChange = (selected: { allSelected: boolean; selectedCount: number; selectedRows: T[] }) => {
+//   //   setSelectedRows(selected.selectedRows);
+//   //   onSelectedRowsChange?.(selected);
+//   // };
+
+//   // Handle bulk delete
+//   // const handleBulkDelete = () => {
+//   //   if (onBulkDelete && selectedRows.length > 0) {
+//   //     if (window.confirm(`Are you sure you want to delete ${selectedRows.length} item(s)?`)) {
+//   //       onBulkDelete(selectedRows);
+//   //     }
+//   //   }
+//   // };
+
+//   // Add debug logging to see what permissions are available
+//   console.log('🔍 DataGridWrapper permissions check:', {
+//     hasEffectivePermissions: !!effectivePermissions,
+//     isStaticAdmin: effectivePermissions?.isStaticAdmin,
+//     addButtonPermission,
+//     exportButtonPermission,
+//     importButtonPermission,
+//     editPermission,
+//     deletePermission,
+//     allTruePermissions: effectivePermissions ? Object.keys(effectivePermissions).filter(k => effectivePermissions[k]) : []
+//   });
+
+//   // Add action columns if row actions are enabled
+//   const enhancedColumns = [...columns];
+  
+//   // if (enableRowActions) {
+//   //   enhancedColumns.push({
+//   //     name: 'Actions',
+//   //     cell: (row: T) => (
+//   //       <div className="flex space-x-2">
+//   //         {onEdit && hasPermission(editPermission) && (
+//   //           <button
+//   //             onClick={() => onEdit(row)}
+//   //             className="px-3 py-1 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+//   //             title="Edit"
+//   //           >
+//   //             Edit
+//   //           </button>
+//   //         )}
+//   //         {onDelete && hasPermission(deletePermission) && (
+//   //           <button
+//   //             onClick={() => onDelete(row)}
+//   //             className="px-3 py-1 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+//   //             title="Delete"
+//   //           >
+//   //             Delete
+//   //           </button>
+//   //         )}
+//   //       </div>
+//   //     ),
+//   //     ignoreRowClick: true,
+//   //     allowOverflow: true,
+//   //   });
+//   // }
+
 //   return (
-//     <div className="p-6 bg-gray-50 min-h-screen w-full"> {/* Added w-full here */}
+//     <div className="p-6 bg-gray-50 min-h-screen w-full">
 //       {/* Header Section */}
 //       <div className="mb-6">
 //         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -89,9 +226,24 @@
 //           </div>
           
 //           <div className="flex flex-wrap gap-2">
+//             {/* Bulk Actions */}
+//             {/* {enableBulkActions && selectedRows.length > 0 && hasPermission(bulkDeletePermission) && (
+//               <div className="flex items-center gap-2 mr-4">
+//                 <span className="text-sm text-gray-600">
+//                   {selectedRows.length} selected
+//                 </span>
+//                 <button
+//                   onClick={handleBulkDelete}
+//                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+//                 >
+//                   Delete Selected
+//                 </button>
+//               </div>
+//             )}
+//              */}
 //             {customActions}
             
-//             {hasExportButton && (
+//             {hasExportButton && hasPermission(exportButtonPermission) && (
 //               <button
 //                 onClick={onExport}
 //                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -100,7 +252,7 @@
 //               </button>
 //             )}
             
-//             {hasImportButton && (
+//             {hasImportButton && hasPermission(importButtonPermission) && (
 //               <button
 //                 onClick={onImport}
 //                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -109,7 +261,7 @@
 //               </button>
 //             )}
             
-//             {hasAddButton && hasPermission(addButtonPermission || '') && (
+//             {hasAddButton && hasPermission(addButtonPermission) && (
 //               <button
 //                 onClick={addButtonOnClick}
 //                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -122,11 +274,11 @@
 //       </div>
 
 //       {/* Search and Filters Section */}
-//       <div className="bg-white rounded-lg shadow mb-6 w-full"> {/* Added w-full here */}
+//       <div className="bg-white rounded-lg shadow mb-6 w-full">
 //         <div className="p-4 border-b border-gray-200">
-//           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full"> {/* Added w-full here */}
+//           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
 //             {isSearchEnabled && (
-//               <div className="flex-1"> {/* REMOVED max-w-md from here */}
+//               <div className="flex-1">
 //                 <div className="relative">
 //                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
 //                     <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
@@ -181,16 +333,16 @@
 //       </div>
 
 //       {/* Data Grid */}
-//       <div className="min-h-[400px] w-full"> {/* Added w-full here */}
+//       <div className="min-h-[400px] w-full">
 //         <DataGrid
-//           columns={columns}
+//           columns={enhancedColumns}
 //           data={data}
 //           isLoading={isLoading}
 //           totalRows={totalRows}
 //           rowsPerPage={rowsPerPage}
 //           currentPage={currentPage}
 //           onPageChange={onPageChange}
-//           onSelectedRowsChange={onSelectedRowsChange}
+//           // onSelectedRowsChange={handleSelectedRowsChange}
 //         />
 //       </div>
 //     </div>
@@ -214,11 +366,10 @@
 
 
 
+'use client';
 
 
-
-// _components/_data-grid/DataGridWrapper.tsx
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useState, useEffect } from 'react';
 import DataGrid from './DataGrid';
 import { usePermissions } from '../contexts/PermissionContext';
 
@@ -336,7 +487,7 @@ const DataGridWrapper = <T,>({
     
     // If user is static admin, they have ALL permissions
     if (effectivePermissions && effectivePermissions.isStaticAdmin === true) {
-      console.log(`✅ DataGridWrapper: Static admin override for permission: ${permission}`);
+      // console.log(`✅ DataGridWrapper: Static admin override for permission: ${permission}`);
       return true;
     }
     
@@ -350,7 +501,7 @@ const DataGridWrapper = <T,>({
       return true;
     }
     
-    console.log(`❌ DataGridWrapper: No permission for: ${permission}`);
+    // console.log(`❌ DataGridWrapper: No permission for: ${permission}`);
     return false;
   };
 
@@ -388,6 +539,19 @@ const DataGridWrapper = <T,>({
   // };
 
   // Add debug logging to see what permissions are available
+  // console.log('🔍 DataGridWrapper permissions check:', {
+  //   hasEffectivePermissions: !!effectivePermissions,
+  //   isStaticAdmin: effectivePermissions?.isStaticAdmin,
+  //   addButtonPermission,
+  //   exportButtonPermission,
+  //   importButtonPermission,
+  //   editPermission,
+  //   deletePermission,
+  //   allTruePermissions: effectivePermissions ? Object.keys(effectivePermissions).filter(k => effectivePermissions[k]) : []
+  // });
+
+
+  useEffect(() => {
   console.log('🔍 DataGridWrapper permissions check:', {
     hasEffectivePermissions: !!effectivePermissions,
     isStaticAdmin: effectivePermissions?.isStaticAdmin,
@@ -398,39 +562,11 @@ const DataGridWrapper = <T,>({
     deletePermission,
     allTruePermissions: effectivePermissions ? Object.keys(effectivePermissions).filter(k => effectivePermissions[k]) : []
   });
+}, [effectivePermissions, addButtonPermission, exportButtonPermission, importButtonPermission, editPermission, deletePermission]);
 
   // Add action columns if row actions are enabled
   const enhancedColumns = [...columns];
-  
-  // if (enableRowActions) {
-  //   enhancedColumns.push({
-  //     name: 'Actions',
-  //     cell: (row: T) => (
-  //       <div className="flex space-x-2">
-  //         {onEdit && hasPermission(editPermission) && (
-  //           <button
-  //             onClick={() => onEdit(row)}
-  //             className="px-3 py-1 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
-  //             title="Edit"
-  //           >
-  //             Edit
-  //           </button>
-  //         )}
-  //         {onDelete && hasPermission(deletePermission) && (
-  //           <button
-  //             onClick={() => onDelete(row)}
-  //             className="px-3 py-1 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
-  //             title="Delete"
-  //           >
-  //             Delete
-  //           </button>
-  //         )}
-  //       </div>
-  //     ),
-  //     ignoreRowClick: true,
-  //     allowOverflow: true,
-  //   });
-  // }
+
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen w-full">
@@ -443,21 +579,7 @@ const DataGridWrapper = <T,>({
           </div>
           
           <div className="flex flex-wrap gap-2">
-            {/* Bulk Actions */}
-            {/* {enableBulkActions && selectedRows.length > 0 && hasPermission(bulkDeletePermission) && (
-              <div className="flex items-center gap-2 mr-4">
-                <span className="text-sm text-gray-600">
-                  {selectedRows.length} selected
-                </span>
-                <button
-                  onClick={handleBulkDelete}
-                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-                >
-                  Delete Selected
-                </button>
-              </div>
-            )}
-             */}
+            
             {customActions}
             
             {hasExportButton && hasPermission(exportButtonPermission) && (
