@@ -10,6 +10,7 @@ interface DataGridProps<T> {
   currentPage?: number;
   onPageChange?: (page: number) => void;
   onSelectedRowsChange?: (selected: { allSelected: boolean; selectedCount: number; selectedRows: T[] }) => void;
+  showPagination?: boolean;
 }
 
 const DataGrid = <T,>({
@@ -21,6 +22,7 @@ const DataGrid = <T,>({
   currentPage = 1,
   onPageChange,
   onSelectedRowsChange
+  , showPagination = true
 }: DataGridProps<T>) => {
   const paginationComponentOptions = useMemo(() => ({
     rowsPerPageText: 'Rows per page:',
@@ -132,12 +134,12 @@ const DataGrid = <T,>({
             <p className="mt-1 text-sm text-gray-500">Get started by creating a new record.</p>
           </div>
         }
-        pagination
-        paginationServer
-        paginationTotalRows={totalRows}
-        paginationPerPage={rowsPerPage}
-        paginationDefaultPage={currentPage}
-        onChangePage={onPageChange}
+        pagination={showPagination}
+        paginationServer={showPagination}
+        paginationTotalRows={showPagination ? totalRows : 0}
+        paginationPerPage={showPagination ? rowsPerPage : 0}
+        paginationDefaultPage={showPagination ? currentPage : 1}
+        onChangePage={showPagination ? onPageChange : undefined}
         paginationComponentOptions={paginationComponentOptions}
         customStyles={customStyles}
         selectableRows={!!onSelectedRowsChange}

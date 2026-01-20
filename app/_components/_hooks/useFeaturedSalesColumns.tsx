@@ -1,14 +1,15 @@
 // import React, { useMemo, useState, useRef, useEffect } from 'react';
 // import { createPortal } from 'react-dom';
-// import { Eye, Edit, Trash2, ChevronDown, Check, Image as ImageIcon, ExternalLink } from 'lucide-react';
+// import { Eye, Edit, Trash2, ChevronDown, Check, ExternalLink } from 'lucide-react';
 
-// // Unified interface for HeroSlider items
-// interface HeroSliderItem {
+// // Unified interface for FeaturedSales items
+// interface FeaturedSaleItem {
 //   id: string;
 //   _id: string;
 //   serialNo: number;
 //   image: string;
 //   title: string;
+//   subtitle: string;
 //   buttonText: string;
 //   buttonLink: string;
 //   status: 'active' | 'inactive';
@@ -20,11 +21,11 @@
 //   description?: string;
 // }
 
-// interface UseHeroSliderColumnsProps {
-//   onEdit?: (item: HeroSliderItem) => void;
-//   onDelete?: (item: HeroSliderItem) => void;
-//   onStatusChange?: (item: HeroSliderItem, status: 'active' | 'inactive') => void;
-//   onView?: (item: HeroSliderItem) => void;
+// interface UseFeaturedSalesColumnsProps {
+//   onEdit?: (item: FeaturedSaleItem) => void;
+//   onDelete?: (item: FeaturedSaleItem) => void;
+//   onStatusChange?: (item: FeaturedSaleItem, status: 'active' | 'inactive') => void;
+//   onView?: (item: FeaturedSaleItem) => void;
 //   permissions?: { [key: string]: boolean };
 // }
 
@@ -144,15 +145,15 @@
 // }
 
 // /* -------------------------
-//    Main Hook for Hero Slider Columns
+//    Main Hook for Featured Sales Columns
 // -------------------------- */
-// export const useHeroSliderColumns = ({
+// export const useFeaturedSalesColumns = ({
 //   onEdit,
 //   onDelete,
 //   onStatusChange,
 //   onView,
 //   permissions = {}
-// }: UseHeroSliderColumnsProps) => {
+// }: UseFeaturedSalesColumnsProps) => {
 //   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 //   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
 
@@ -171,7 +172,7 @@
     
 //     // Check specific permission
 //     const hasPerm = permissions[permissionKey] === true;
-//     console.log(`🔍 useHeroSliderColumns checking "${permissionKey}": ${hasPerm}`);
+//     console.log(`🔍 useFeaturedSalesColumns checking "${permissionKey}": ${hasPerm}`);
 //     return hasPerm;
 //   };
 
@@ -179,10 +180,10 @@
 //     () => [
 //       {
 //         name: 'S.No',
-//         selector: (row: HeroSliderItem) => row.serialNo,
+//         selector: (row: FeaturedSaleItem) => row.serialNo,
 //         sortable: true,
 //         width: '80px',
-//         cell: (row: HeroSliderItem) => (
+//         cell: (row: FeaturedSaleItem) => (
 //           <div className="text-center text-gray-600 font-medium">
 //             {row.serialNo}
 //           </div>
@@ -190,10 +191,10 @@
 //       },
 //       {
 //         name: 'Image',
-//         selector: (row: HeroSliderItem) => row.image,
+//         selector: (row: FeaturedSaleItem) => row.image,
 //         sortable: false,
 //         width: '120px',
-//         cell: (row: HeroSliderItem) => {
+//         cell: (row: FeaturedSaleItem) => {
 //           const imageUrl = row.image;
 //           return (
 //             <div className="flex items-center justify-center p-2">
@@ -213,10 +214,10 @@
 //       },
 //       {
 //         name: 'Title',
-//         selector: (row: HeroSliderItem) => row.title,
+//         selector: (row: FeaturedSaleItem) => row.title,
 //         sortable: true,
-//         width: '250px',
-//         cell: (row: HeroSliderItem) => (
+//         width: '195px',
+//         cell: (row: FeaturedSaleItem) => (
 //           <div className="max-w-xs">
 //             <div className="font-medium text-gray-900 truncate" title={row.title}>
 //               {row.title}
@@ -228,11 +229,24 @@
 //         ),
 //       },
 //       {
-//         name: 'Button',
-//         selector: (row: HeroSliderItem) => row.buttonText,
+//         name: 'Subtitle',
+//         selector: (row: FeaturedSaleItem) => row.subtitle,
 //         sortable: true,
-//         width: '180px',
-//         cell: (row: HeroSliderItem) => (
+//         width: '195px',
+//         cell: (row: FeaturedSaleItem) => (
+//           <div className="max-w-xs">
+//             <div className="text-sm text-gray-700 truncate" title={row.subtitle}>
+//               {row.subtitle || '—'}
+//             </div>
+//           </div>
+//         ),
+//       },
+//       {
+//         name: 'Button',
+//         selector: (row: FeaturedSaleItem) => row.buttonText,
+//         sortable: true,
+//         width: '170px',
+//         cell: (row: FeaturedSaleItem) => (
 //           <div className="flex items-center gap-2">
 //             <span className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-lg border border-blue-100">
 //               {row.buttonText}
@@ -251,22 +265,22 @@
 //       },
 //       {
 //         name: 'Status',
-//         selector: (row: HeroSliderItem) => row.status,
+//         selector: (row: FeaturedSaleItem) => row.status,
 //         sortable: true,
 //         width: '130px',
-//         cell: (row: HeroSliderItem) => {
+//         cell: (row: FeaturedSaleItem) => {
 //           const id = `status-${row.id}`;
 //           const isOpen = activeDropdown === id;
 //           const current = statusOptions.find((s) => s.value === row.status);
           
 //           // Check if user has permission to change status
-//           const canChangeStatus = hasPermission('hero_slider.edit');
+//           const canChangeStatus = hasPermission('featured_sales.edit');
 
-//           console.log('🔍 Status dropdown permissions for hero slider:', {
+//           console.log('🔍 Status dropdown permissions for featured sales:', {
 //             rowId: row.id,
 //             canChangeStatus,
 //             isStaticAdmin: permissions.isStaticAdmin,
-//             hero_slider_edit: permissions['hero_slider.edit']
+//             featured_sales_edit: permissions['featured_sales.edit']
 //           });
 
 //           return (
@@ -310,20 +324,20 @@
 //       {
 //         name: 'Actions',
 //         width: '150px',
-//         cell: (row: HeroSliderItem) => {
+//         cell: (row: FeaturedSaleItem) => {
 //           // Check permissions for each action
-//           const canView = hasPermission('hero_slider.view') || permissions.view === true;
-//           const canEdit = hasPermission('hero_slider.edit');
-//           const canDelete = hasPermission('hero_slider.delete');
+//           const canView = hasPermission('featured_sales.view') || permissions.view === true;
+//           const canEdit = hasPermission('featured_sales.edit');
+//           const canDelete = hasPermission('featured_sales.delete');
 
-//           console.log('🔍 Row action permissions for hero slider:', {
+//           console.log('🔍 Row action permissions for featured sales:', {
 //             rowId: row.id,
 //             canView,
 //             canEdit,
 //             canDelete,
 //             isStaticAdmin: permissions.isStaticAdmin,
-//             hero_slider_edit: permissions['hero_slider.edit'],
-//             hero_slider_delete: permissions['hero_slider.delete']
+//             featured_sales_edit: permissions['featured_sales.edit'],
+//             featured_sales_delete: permissions['featured_sales.delete']
 //           });
 
 //           return (
@@ -348,7 +362,7 @@
 //               {canEdit ? (
 //                 <button
 //                   onClick={() => {
-//                     console.log('✏️ Edit clicked for item:', row);
+//                     console.log('✏️ Edit clicked for featured sale:', row);
 //                     onEdit?.(row);
 //                   }}
 //                   className="flex items-center justify-center w-8 h-8 bg-green-50 hover:bg-green-100 text-green-600 rounded-md transition duration-200"
@@ -368,7 +382,7 @@
 //               {canDelete ? (
 //                 <button
 //                   onClick={() => {
-//                     console.log('🗑️ Delete clicked for item:', row);
+//                     console.log('🗑️ Delete clicked for featured sale:', row);
 //                     onDelete?.(row);
 //                   }}
 //                   className="flex items-center justify-center w-8 h-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-md transition duration-200"
@@ -407,17 +421,24 @@
 
 
 
+
+
+
+
+
+
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Eye, Edit, Trash2, ChevronDown, Check, Image as ImageIcon, ExternalLink } from 'lucide-react';
+import { Eye, Edit, Trash2, ChevronDown, Check, ExternalLink } from 'lucide-react';
 
-// Unified interface for HeroSlider items
-interface HeroSliderItem {
+// Unified interface for FeaturedSales items
+interface FeaturedSaleItem {
   id: string;
   _id: string;
   serialNo: number;
   image: string;
   title: string;
+  subtitle: string;
   buttonText: string;
   buttonLink: string;
   status: 'active' | 'inactive';
@@ -429,11 +450,11 @@ interface HeroSliderItem {
   description?: string;
 }
 
-interface UseHeroSliderColumnsProps {
-  onEdit?: (item: HeroSliderItem) => void;
-  onDelete?: (item: HeroSliderItem) => void;
-  onStatusChange?: (item: HeroSliderItem, status: 'active' | 'inactive') => void;
-  onView?: (item: HeroSliderItem) => void;
+interface UseFeaturedSalesColumnsProps {
+  onEdit?: (item: FeaturedSaleItem) => void;
+  onDelete?: (item: FeaturedSaleItem) => void;
+  onStatusChange?: (item: FeaturedSaleItem, status: 'active' | 'inactive') => void;
+  onView?: (item: FeaturedSaleItem) => void;
   permissions?: { [key: string]: boolean };
 }
 
@@ -553,15 +574,15 @@ function PortalDropdown<T>({
 }
 
 /* -------------------------
-   Main Hook for Hero Slider Columns
+   Main Hook for Featured Sales Columns
 -------------------------- */
-export const useHeroSliderColumns = ({
+export const useFeaturedSalesColumns = ({
   onEdit,
   onDelete,
   onStatusChange,
   onView,
   permissions = {}
-}: UseHeroSliderColumnsProps) => {
+}: UseFeaturedSalesColumnsProps) => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
 
@@ -580,7 +601,7 @@ export const useHeroSliderColumns = ({
     
     // Check specific permission
     const hasPerm = permissions[permissionKey] === true;
-    console.log(`🔍 useHeroSliderColumns checking "${permissionKey}": ${hasPerm}`);
+    console.log(`🔍 useFeaturedSalesColumns checking "${permissionKey}": ${hasPerm}`);
     return hasPerm;
   };
 
@@ -588,10 +609,10 @@ export const useHeroSliderColumns = ({
     () => [
       {
         name: 'S.No',
-        selector: (row: HeroSliderItem) => row.serialNo,
+        selector: (row: FeaturedSaleItem) => row.serialNo,
         sortable: true,
         width: '80px',
-        cell: (row: HeroSliderItem) => (
+        cell: (row: FeaturedSaleItem) => (
           <div className="text-center text-gray-600 font-medium">
             {row.serialNo}
           </div>
@@ -599,10 +620,10 @@ export const useHeroSliderColumns = ({
       },
       {
         name: 'Image',
-        selector: (row: HeroSliderItem) => row.image,
+        selector: (row: FeaturedSaleItem) => row.image,
         sortable: false,
         width: '120px',
-        cell: (row: HeroSliderItem) => {
+        cell: (row: FeaturedSaleItem) => {
           const imageUrl = row.image;
           return (
             <div className="flex items-center justify-center p-2">
@@ -622,10 +643,10 @@ export const useHeroSliderColumns = ({
       },
       {
         name: 'Title',
-        selector: (row: HeroSliderItem) => row.title,
+        selector: (row: FeaturedSaleItem) => row.title,
         sortable: true,
-        width: '250px',
-        cell: (row: HeroSliderItem) => (
+        width: '195px',
+        cell: (row: FeaturedSaleItem) => (
           <div className="max-w-xs">
             <div className="font-medium text-gray-900 truncate" title={row.title}>
               {row.title}
@@ -637,11 +658,24 @@ export const useHeroSliderColumns = ({
         ),
       },
       {
-        name: 'Button',
-        selector: (row: HeroSliderItem) => row.buttonText,
+        name: 'Subtitle',
+        selector: (row: FeaturedSaleItem) => row.subtitle,
         sortable: true,
-        width: '180px',
-        cell: (row: HeroSliderItem) => (
+        width: '195px',
+        cell: (row: FeaturedSaleItem) => (
+          <div className="max-w-xs">
+            <div className="text-sm text-gray-700 truncate" title={row.subtitle}>
+              {row.subtitle || '—'}
+            </div>
+          </div>
+        ),
+      },
+      {
+        name: 'Button',
+        selector: (row: FeaturedSaleItem) => row.buttonText,
+        sortable: true,
+        width: '170px',
+        cell: (row: FeaturedSaleItem) => (
           <div className="flex items-center gap-2">
             <span className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-lg border border-blue-100">
               {row.buttonText}
@@ -660,22 +694,22 @@ export const useHeroSliderColumns = ({
       },
       {
         name: 'Status',
-        selector: (row: HeroSliderItem) => row.status,
+        selector: (row: FeaturedSaleItem) => row.status,
         sortable: true,
         width: '130px',
-        cell: (row: HeroSliderItem) => {
+        cell: (row: FeaturedSaleItem) => {
           const id = `status-${row.id}`;
           const isOpen = activeDropdown === id;
           const current = statusOptions.find((s) => s.value === row.status);
           
           // Check if user has permission to change status
-          const canChangeStatus = hasPermission('hero_slider.edit');
+          const canChangeStatus = hasPermission('featured_sales.edit');
 
-          console.log('🔍 Status dropdown permissions for hero slider:', {
+          console.log('🔍 Status dropdown permissions for featured sales:', {
             rowId: row.id,
             canChangeStatus,
             isStaticAdmin: permissions.isStaticAdmin,
-            hero_slider_edit: permissions['hero_slider.edit']
+            featured_sales_edit: permissions['featured_sales.edit']
           });
 
           return (
@@ -719,20 +753,20 @@ export const useHeroSliderColumns = ({
       {
         name: 'Actions',
         width: '150px',
-        cell: (row: HeroSliderItem) => {
+        cell: (row: FeaturedSaleItem) => {
           // Check permissions for each action
-          const canView = hasPermission('hero_slider.view') || permissions.view === true;
-          const canEdit = hasPermission('hero_slider.edit');
-          const canDelete = hasPermission('hero_slider.delete');
+          const canView = hasPermission('featured_sales.view') || permissions.view === true;
+          const canEdit = hasPermission('featured_sales.edit');
+          const canDelete = hasPermission('featured_sales.delete');
 
-          console.log('🔍 Row action permissions for hero slider:', {
+          console.log('🔍 Row action permissions for featured sales:', {
             rowId: row.id,
             canView,
             canEdit,
             canDelete,
             isStaticAdmin: permissions.isStaticAdmin,
-            hero_slider_edit: permissions['hero_slider.edit'],
-            hero_slider_delete: permissions['hero_slider.delete']
+            featured_sales_edit: permissions['featured_sales.edit'],
+            featured_sales_delete: permissions['featured_sales.delete']
           });
 
           return (
@@ -757,7 +791,7 @@ export const useHeroSliderColumns = ({
               {canEdit ? (
                 <button
                   onClick={() => {
-                    console.log('✏️ Edit clicked for item:', row);
+                    console.log('✏️ Edit clicked for featured sale:', row);
                     onEdit?.(row);
                   }}
                   className="flex items-center justify-center w-8 h-8 bg-green-50 hover:bg-green-100 text-green-600 rounded-md transition duration-200 cursor-pointer"
@@ -777,7 +811,7 @@ export const useHeroSliderColumns = ({
               {canDelete ? (
                 <button
                   onClick={() => {
-                    console.log('🗑️ Delete clicked for item:', row);
+                    console.log('🗑️ Delete clicked for featured sale:', row);
                     onDelete?.(row);
                   }}
                   className="flex items-center justify-center w-8 h-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-md transition duration-200 cursor-pointer"

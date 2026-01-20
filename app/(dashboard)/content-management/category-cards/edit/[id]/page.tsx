@@ -1,13 +1,12 @@
-// app/content-management/hero-slider/edit/[id]/page.tsx
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { usePermissions } from '../../../../../_components/contexts/PermissionContext';
 import { clientService } from '../../../../../app/utils/api-client';
 import { toast } from 'react-toastify';
 import Link from 'next/link';
-import { Upload, X, Image as ImageIcon, Link as LinkIcon, Loader2 } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, Link as LinkIcon, Tag, List, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useQueryClient } from '@tanstack/react-query'; // ADD THIS IMPORT
 
@@ -17,28 +16,11 @@ interface ApiResponse<T = any> {
   data: T;
 }
 
-interface HeroSliderFormData {
-  title: string;
-  buttonText: string;
-  buttonLink: string;
-  status: 'active' | 'inactive';
-  displayOrder: number;
-  existingImage?: string;
-}
-
-interface HeroSliderFormErrors {
-  image?: string;
-  title?: string;
-  buttonText?: string;
-  buttonLink?: string;
-  status?: string;
-  displayOrder?: string;
-}
-
-interface HeroSliderItem {
+interface CategoryCardItem {
   _id: string;
   image: string;
   title: string;
+  subtitle: string;
   buttonText: string;
   buttonLink: string;
   status: 'active' | 'inactive';
@@ -46,95 +28,162 @@ interface HeroSliderItem {
   createdAt: string;
   updatedAt: string;
   createdBy: string;
+  tag?: string;
+  description?: string;
 }
 
-const EditHeroSliderPage = () => {
+interface CategoryCardFormData {
+  title: string;
+  subtitle: string;
+  buttonText: string;
+  buttonLink: string;
+  status: 'active' | 'inactive';
+  displayOrder: number;
+  tag?: string;
+  description?: string;
+   existingImage?: string;
+}
+
+interface CategoryCardFormErrors {
+  image?: string;
+  title?: string;
+  subtitle?: string;
+  buttonText?: string;
+  buttonLink?: string;
+  status?: string;
+  displayOrder?: string;
+}
+
+// Loading component for Suspense
+function LoadingState() {
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-lg shadow-md">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+            <div className="space-y-4">
+              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              <div className="h-10 bg-gray-200 rounded"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              <div className="h-10 bg-gray-200 rounded"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CategoryCardEditContent() {
   const router = useRouter();
   const params = useParams();
   const { permissions } = usePermissions();
   const queryClient = useQueryClient(); // ADD THIS
-  
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isClient, setIsClient] = useState(false);
-  const [formData, setFormData] = useState<HeroSliderFormData>({
+  const [originalData, setOriginalData] = useState<CategoryCardItem | null>(null);
+  const [formData, setFormData] = useState<CategoryCardFormData>({
     title: '',
-    buttonText: 'Learn More',
+    subtitle: '',
+    buttonText: 'Explore',
     buttonLink: '',
     status: 'active',
     displayOrder: 1,
-    existingImage: ''
+    tag: '',
+    description: '',
+      existingImage: ''
   });
 
-  const [errors, setErrors] = useState<HeroSliderFormErrors>({});
+  const [errors, setErrors] = useState<CategoryCardFormErrors>({});
   const [isDragging, setIsDragging] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploadMode, setIsUploadMode] = useState(true); // Default to upload mode
+  const [isUploadMode, setIsUploadMode] = useState(true);
+  const [hasChanges, setHasChanges] = useState(false);
   const [showExistingImage, setShowExistingImage] = useState(true);
+  const [isImageChanged, setIsImageChanged] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Get the ID from URL parameters (decode to handle special characters)
-  const sliderId = params?.id ? decodeURIComponent(params.id as string) : '';
+  // Get the ID from params
+  const id = params?.id ? decodeURIComponent(params.id as string) : '';
 
   // Set isClient only on the client
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Fetch hero slider data
+  // Fetch category card data
   useEffect(() => {
-    if (!isClient || !sliderId) return;
+    const fetchCategoryCardData = async () => {
+      if (!id || !isClient) return;
 
-    const fetchHeroSlider = async () => {
       try {
         setIsLoading(true);
-        
-        // Log for debugging
-        console.log('🔍 Fetching hero slider with ID:', {
-          sliderId,
-          encodedId: encodeURIComponent(sliderId),
-          url: `/hero-slider/${sliderId}`
-        });
+        console.log('🔄 Fetching category card for edit, ID:', id);
 
-        const response = await clientService.get<ApiResponse<HeroSliderItem>>(`/hero-slider/${sliderId}`);
-        
+        const response = await clientService.get<ApiResponse<CategoryCardItem>>(
+          `/category-cards/${id}`
+        );
+
+        console.log('✅ Category card data fetched:', response.data);
+
         if (response.data.success) {
-          const item = response.data.data;
-          console.log('📋 Fetched hero slider item:', item);
+          const categoryCard = response.data.data;
+          setOriginalData(categoryCard);
           
           setFormData({
-            title: item.title || '',
-            buttonText: item.buttonText || 'Learn More',
-            buttonLink: item.buttonLink || '',
-            status: item.status || 'active',
-            displayOrder: item.displayOrder || 1,
-            existingImage: item.image || ''
+            title: categoryCard.title || '',
+            subtitle: categoryCard.subtitle || '',
+            buttonText: categoryCard.buttonText || 'Explore',
+            buttonLink: categoryCard.buttonLink || '',
+            status: categoryCard.status || 'active',
+            displayOrder: categoryCard.displayOrder || 1,
+            tag: categoryCard.tag || '',
+            description: categoryCard.description || '',
+             existingImage: categoryCard.image || ''
           });
 
-          // Set existing image for preview
-          if (item.image) {
-            setImagePreview(item.image);
+          // Set image preview from existing image URL
+          if (categoryCard.image) {
+            setImagePreview(categoryCard.image);
+            setIsImageChanged(false);
+              setShowExistingImage(true);
           }
         } else {
-          throw new Error(response.data.message || 'Failed to fetch hero slider data');
-        }
-      } catch (error: any) {
-        console.error('❌ Error fetching hero slider:', error);
-        
-        if (error.response?.status === 404) {
-          toast.error('Hero slider item not found');
+          toast.error('Failed to load category card data');
           router.push('/content-management');
-        } else {
-          toast.error(`Failed to load hero slider: ${error.response?.data?.message || error.message}`);
         }
+      } catch (error) {
+        console.error('❌ Error fetching category card:', error);
+        toast.error('Failed to load category card data');
+        router.push('/content-management');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchHeroSlider();
-  }, [isClient, sliderId, router]);
+    fetchCategoryCardData();
+  }, [id, isClient, router]);
+
+  // Check for changes
+  useEffect(() => {
+    if (!originalData) return;
+
+    const formChanged = 
+      formData.title !== originalData.title ||
+      formData.subtitle !== (originalData.subtitle || '') ||
+      formData.buttonText !== originalData.buttonText ||
+      formData.buttonLink !== originalData.buttonLink ||
+      formData.status !== originalData.status ||
+      formData.displayOrder !== originalData.displayOrder ||
+      formData.tag !== (originalData.tag || '') ||
+      formData.description !== (originalData.description || '') ||
+      isImageChanged;
+
+    setHasChanges(formChanged);
+  }, [formData, originalData, isImageChanged]);
 
   // Helper function to check permissions
   const hasPermission = (permissionKey: string): boolean => {
@@ -153,7 +202,7 @@ const EditHeroSliderPage = () => {
     }));
 
     // Clear error for this field
-    if (errors[name as keyof HeroSliderFormErrors]) {
+    if (errors[name as keyof CategoryCardFormErrors]) {
       setErrors(prev => ({
         ...prev,
         [name]: undefined
@@ -215,17 +264,19 @@ const EditHeroSliderPage = () => {
     setImagePreview(previewUrl);
     setSelectedFile(file);
     setIsUploadMode(true);
+    setIsImageChanged(true);
     setShowExistingImage(false);
-    toast.success('New image uploaded!');
+    toast.success('New image selected!');
   };
 
   const handleRemoveImage = () => {
-    if (imagePreview && imagePreview !== formData.existingImage) {
-      URL.revokeObjectURL(imagePreview); // Clean up memory for new uploads
+    if (imagePreview && isImageChanged) {
+      URL.revokeObjectURL(imagePreview);
     }
-    setImagePreview(formData.existingImage || null);
+    setImagePreview(originalData?.image || null);
     setSelectedFile(null);
-    setShowExistingImage(true);
+    setIsImageChanged(false);
+      setShowExistingImage(true);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -236,30 +287,36 @@ const EditHeroSliderPage = () => {
   };
 
   // Switch between URL and upload modes
-  const handleModeSwitch = (mode: 'upload' | 'url') => {
-    setIsUploadMode(mode === 'upload');
-    if (mode === 'url') {
-      // Switching to URL mode - clear uploaded image
-      if (imagePreview && imagePreview !== formData.existingImage) {
-        URL.revokeObjectURL(imagePreview);
-      }
-      setImagePreview(formData.existingImage || null);
-      setSelectedFile(null);
-      setShowExistingImage(true);
-    } else {
-      // Switching to upload mode
-      setIsUploadMode(true);
+const handleModeSwitch = (mode: 'upload' | 'url') => {
+  setIsUploadMode(mode === 'upload');
+  if (mode === 'url') {
+    // Switching to URL mode - clear uploaded image
+    if (imagePreview && isImageChanged) {
+      URL.revokeObjectURL(imagePreview);
     }
-  };
+    setImagePreview(formData.existingImage || null);
+    setSelectedFile(null);
+    setIsImageChanged(false);
+    setShowExistingImage(true);
+    toast.info('URL mode is not available. Please use image upload.');
+  } else {
+    // Switching to upload mode
+    setIsUploadMode(true);
+  }
+};
 
   // Validate form
   const validateForm = (): boolean => {
-    const newErrors: HeroSliderFormErrors = {};
+    const newErrors: CategoryCardFormErrors = {};
 
     if (!formData.title.trim()) {
       newErrors.title = 'Title is required';
-    } else if (formData.title.length > 200) {
-      newErrors.title = 'Title cannot exceed 200 characters';
+    } else if (formData.title.length > 100) {
+      newErrors.title = 'Title cannot exceed 100 characters';
+    }
+
+    if (formData.subtitle && formData.subtitle.length > 200) {
+      newErrors.subtitle = 'Subtitle cannot exceed 200 characters';
     }
 
     if (!formData.buttonText.trim()) {
@@ -296,10 +353,15 @@ const EditHeroSliderPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!isClient || !sliderId) return;
+    if (!isClient || !id) return;
     
     if (!validateForm()) {
       toast.error('Please fix the errors in the form');
+      return;
+    }
+
+    if (!hasChanges) {
+      toast.info('No changes to save');
       return;
     }
 
@@ -311,10 +373,24 @@ const EditHeroSliderPage = () => {
       
       // Append text fields
       submitFormData.append('title', formData.title);
+      submitFormData.append('subtitle', formData.subtitle);
       submitFormData.append('buttonText', formData.buttonText);
       submitFormData.append('buttonLink', formData.buttonLink);
       submitFormData.append('status', formData.status);
       submitFormData.append('displayOrder', formData.displayOrder.toString());
+      
+      // Append optional fields if they have values
+      if (formData.tag) {
+        submitFormData.append('tag', formData.tag);
+      } else {
+        submitFormData.append('tag', ''); // Send empty to clear if previously had value
+      }
+      
+      if (formData.description) {
+        submitFormData.append('description', formData.description);
+      } else {
+        submitFormData.append('description', ''); // Send empty to clear if previously had value
+      }
       
       // Append image file if in upload mode and a new file was selected
       if (isUploadMode && selectedFile) {
@@ -325,21 +401,25 @@ const EditHeroSliderPage = () => {
         submitFormData.append('removeImage', 'true');
       }
       
-      console.log('🔄 Updating hero slider with ID:', sliderId);
-      console.log('📦 Update data:', {
+      console.log('🔄 Updating category card with data:', {
+        id,
         title: formData.title,
+        subtitle: formData.subtitle,
         buttonText: formData.buttonText,
         buttonLink: formData.buttonLink,
         status: formData.status,
         displayOrder: formData.displayOrder,
+        tag: formData.tag,
+        description: formData.description,
         hasNewImage: !!(isUploadMode && selectedFile),
-        keepExistingImage: showExistingImage
+        keepExistingImage: showExistingImage,
+        isImageChanged: isImageChanged
       });
 
-      // Send data using FormData with PUT method
-      const response = await clientService.put<ApiResponse>(
-        `/hero-slider/${sliderId}`, 
-        submitFormData, 
+      // Send PATCH request with FormData
+      const response = await clientService.patch<ApiResponse>(
+        `/category-cards/${id}`,
+        submitFormData,
         {
           headers: {
             'Content-Type': 'multipart/form-data',
@@ -348,11 +428,11 @@ const EditHeroSliderPage = () => {
       );
       
       if (response.data.success) {
-        toast.success('Hero slider updated successfully!');
+        toast.success('Category card updated successfully!');
         
         // 🔥 CRITICAL FIX: Invalidate the cache BEFORE redirecting
         await queryClient.invalidateQueries({ 
-          queryKey: ['hero-slider'], 
+          queryKey: ['category-cards'], // Changed to match category cards query key
           refetchType: 'all'
         });
         
@@ -362,10 +442,10 @@ const EditHeroSliderPage = () => {
         }, 100);
         
       } else {
-        throw new Error(response.data.message || 'Failed to update hero slider');
+        throw new Error(response.data.message || 'Failed to update category card');
       }
     } catch (error: any) {
-      console.error('❌ Error updating hero slider:', error);
+      console.error('❌ Error updating category card:', error);
       
       if (error.response?.data?.message?.includes('Display order already exists')) {
         setErrors(prev => ({
@@ -374,10 +454,10 @@ const EditHeroSliderPage = () => {
         }));
         toast.error('Display order already exists. Please choose a different one.');
       } else if (error.response?.data?.message?.includes('Cloudinary') || 
-                 error.response?.data?.message?.includes('upload')) {
+               error.response?.data?.message?.includes('upload')) {
         toast.error(`Image upload failed: ${error.response.data.message}`);
       } else {
-        toast.error(`Failed to update hero slider: ${error.response?.data?.message || error.message}`);
+        toast.error(`Failed to update category card: ${error.response?.data?.message || error.message}`);
       }
     } finally {
       setIsSubmitting(false);
@@ -385,29 +465,50 @@ const EditHeroSliderPage = () => {
   };
 
   // Reset form to original values
-  const handleReset = () => {
-    if (formData.existingImage) {
-      setImagePreview(formData.existingImage);
+const handleReset = () => {
+  if (originalData) {
+    setFormData({
+      title: originalData.title || '',
+      subtitle: originalData.subtitle || '',
+      buttonText: originalData.buttonText || 'Explore',
+      buttonLink: originalData.buttonLink || '',
+      status: originalData.status || 'active',
+      displayOrder: originalData.displayOrder || 1,
+      tag: originalData.tag || '',
+      description: originalData.description || '',
+      existingImage: originalData.image || ''
+    });
+
+    if (imagePreview && isImageChanged) {
+      URL.revokeObjectURL(imagePreview);
     }
+    setImagePreview(originalData.image || null);
     setSelectedFile(null);
+    setIsImageChanged(false);
     setShowExistingImage(true);
-    setIsUploadMode(true);
+    setErrors({});
+    
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-    setErrors({});
-  };
+    
+    toast.info('Form reset to original values');
+  }
+};
 
   // Loading state
-  if (!isClient || isLoading) {
+  if (isLoading || !isClient) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white rounded-lg shadow-md">
-            <div className="flex items-center justify-center h-96">
-              <div className="text-center">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-                <p className="text-gray-600">Loading hero slider data...</p>
+            <div className="animate-pulse">
+              <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+              <div className="space-y-4">
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-10 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-10 bg-gray-200 rounded"></div>
               </div>
             </div>
           </div>
@@ -416,21 +517,17 @@ const EditHeroSliderPage = () => {
     );
   }
 
-  // Error state - slider not found
-  if (!sliderId) {
+  if (!originalData) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white rounded-lg shadow-md p-8">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Hero Slider Not Found</h2>
-              <p className="text-gray-600 mb-6">The hero slider item you're trying to edit doesn't exist.</p>
-              <Link
-                href="/content-management"
-                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-              >
-                ← Back to Content Management
-              </Link>
+            <div className="text-center py-12">
+              <div className="mb-4">
+                <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Loading Category Card...</h3>
+              <p className="text-sm text-gray-600">Please wait while we load the category card data.</p>
             </div>
           </div>
         </div>
@@ -442,13 +539,13 @@ const EditHeroSliderPage = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-md">
-          {/* Header - Matching your design */}
+          {/* Header */}
           <div className="px-8 py-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Edit Hero Slider</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Edit Category Card</h1>
                 <p className="mt-1 text-sm text-gray-600">
-                  Update the banner slide for the homepage hero section
+                  Update category card: <span className="font-medium text-blue-600">{originalData.title}</span>
                 </p>
               </div>
               <Link
@@ -458,37 +555,67 @@ const EditHeroSliderPage = () => {
                 ← Back to Content Management
               </Link>
             </div>
+
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-8 space-y-8">
-            {/* Section 1: Title */}
+            {/* Section 1: Category Information */}
             <div className="space-y-6">
-              <h3 className="text-lg font-medium text-gray-900">Title</h3>
+              <h3 className="text-lg font-medium text-gray-900">Category Information</h3>
               
-              <div>
-                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-                  Slide Title *
-                </label>
-                <input
-                  type="text"
-                  id="title"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  required
-                  className={`w-full px-3 py-2 border ${
-                    errors.title ? 'border-red-300' : 'border-gray-300'
-                  } rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-                  placeholder="Enter a compelling slide title"
-                  maxLength={200}
-                />
-                {errors.title && (
-                  <p className="mt-1 text-sm text-red-600">{errors.title}</p>
-                )}
-                <div className="flex justify-between mt-1">
-                  <p className="text-xs text-gray-500">Maximum 200 characters</p>
-                  <p className="text-xs text-gray-500">{formData.title.length}/200</p>
+              <div className="space-y-4">
+                {/* Title */}
+                <div>
+                  <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+                    Category Title *
+                  </label>
+                  <input
+                    type="text"
+                    id="title"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    required
+                    className={`w-full px-3 py-2 border ${
+                      errors.title ? 'border-red-300' : 'border-gray-300'
+                    } rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+                    placeholder="Enter category title"
+                    maxLength={100}
+                  />
+                  {errors.title && (
+                    <p className="mt-1 text-sm text-red-600">{errors.title}</p>
+                  )}
+                  <div className="flex justify-between mt-1">
+                    <p className="text-xs text-gray-500">Maximum 100 characters</p>
+                    <p className="text-xs text-gray-500">{formData.title.length}/100</p>
+                  </div>
+                </div>
+
+                {/* Subtitle */}
+                <div>
+                  <label htmlFor="subtitle" className="block text-sm font-medium text-gray-700 mb-2">
+                    Category Subtitle *
+                  </label>
+                  <input
+                    type="text"
+                    id="subtitle"
+                    name="subtitle"
+                    value={formData.subtitle}
+                    onChange={handleInputChange}
+                    className={`w-full px-3 py-2 border ${
+                      errors.subtitle ? 'border-red-300' : 'border-gray-300'
+                    } rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+                    placeholder="Enter short description"
+                    maxLength={200}
+                  />
+                  {errors.subtitle && (
+                    <p className="mt-1 text-sm text-red-600">{errors.subtitle}</p>
+                  )}
+                  <div className="flex justify-between mt-1">
+                    <p className="text-xs text-gray-500">Maximum 200 characters</p>
+                    <p className="text-xs text-gray-500">{formData.subtitle.length}/200</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -513,7 +640,7 @@ const EditHeroSliderPage = () => {
                     className={`w-full px-3 py-2 border ${
                       errors.buttonText ? 'border-red-300' : 'border-gray-300'
                     } rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-                    placeholder="Learn More, Shop Now, etc."
+                    placeholder="Explore, Shop Now, etc."
                     maxLength={50}
                   />
                   {errors.buttonText && (
@@ -540,7 +667,7 @@ const EditHeroSliderPage = () => {
                     className={`w-full px-3 py-2 border ${
                       errors.buttonLink ? 'border-red-300' : 'border-gray-300'
                     } rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-                    placeholder="https://example.com/your-page"
+                    placeholder="https://example.com/category"
                   />
                   {errors.buttonLink && (
                     <p className="mt-1 text-sm text-red-600">{errors.buttonLink}</p>
@@ -558,7 +685,7 @@ const EditHeroSliderPage = () => {
                   {formData.buttonText || 'Your Button'}
                 </div>
                 <p className="text-xs text-gray-500 mt-3">
-                  This is how your button will appear on the slide
+                  This is how your button will appear on the category card
                 </p>
               </div>
             </div>
@@ -571,7 +698,7 @@ const EditHeroSliderPage = () => {
                 {/* Status */}
                 <div>
                   <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
-                    Slide Status
+                    Card Status
                   </label>
                   <select
                     id="status"
@@ -584,7 +711,7 @@ const EditHeroSliderPage = () => {
                     <option value="inactive">Inactive</option>
                   </select>
                   <p className="mt-1 text-xs text-gray-500">
-                    Active slides will be displayed on the homepage
+                    Active cards will be displayed on the homepage
                   </p>
                 </div>
 
@@ -671,8 +798,10 @@ const EditHeroSliderPage = () => {
                   </div>
                 </div>
               ) : (
-                // Upload Mode (DEFAULT)
+                // Upload Mode (DEFAULT) - Exactly like hero slider
                 <div className="space-y-4">
+
+
                   {/* Upload Area */}
                   <div
                     className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 ${
@@ -759,8 +888,8 @@ const EditHeroSliderPage = () => {
                           <X className="w-5 h-5" />
                         </button>
                       </div>
-                      <div className="relative aspect-video">
-                        <div className="relative w-full h-48">
+                      <div className="relative aspect-square">
+                        <div className="relative w-full h-64">
                           <Image
                             src={imagePreview}
                             alt="New image preview"
@@ -784,12 +913,12 @@ const EditHeroSliderPage = () => {
                 </div>
               )}
 
-              {/* Slide Preview (for both modes) */}
+              {/* Category Card Preview (for both modes) */}
               {imagePreview && (
                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <p className="text-sm font-medium text-gray-700 mb-3">Slide Preview:</p>
-                  <div className="relative aspect-video rounded-md overflow-hidden border border-gray-200">
-                    <div className="relative w-full h-48">
+                  <p className="text-sm font-medium text-gray-700 mb-3">Category Card Preview:</p>
+                  <div className="relative aspect-square rounded-md overflow-hidden border border-gray-200 shadow-lg max-w-md mx-auto">
+                    <div className="relative w-full h-64">
                       <Image
                         src={imagePreview}
                         alt="Preview"
@@ -798,32 +927,29 @@ const EditHeroSliderPage = () => {
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       />
                     </div>
-                    <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent flex items-end p-4">
+                    <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/30 to-transparent flex flex-col justify-end p-4">
                       <div className="text-white">
-                        <h3 className="text-lg font-bold mb-2">{formData.title || 'Slide Title'}</h3>
+                        <h3 className="text-xl font-bold mb-1">{formData.title || 'Category Title'}</h3>
+                        {formData.subtitle && (
+                          <p className="text-sm text-gray-100 mb-3 opacity-90">
+                            {formData.subtitle}
+                          </p>
+                        )}
                         <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors duration-200">
                           {formData.buttonText || 'Button'}
                         </button>
                       </div>
                     </div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-3">
-                    This is how your updated slide will appear on the homepage
+                  <p className="text-xs text-gray-500 mt-3 text-center">
+                    This is how your updated category card will appear on the homepage
                   </p>
                 </div>
               )}
             </div>
 
-            {/* Form Actions - Matching your design */}
-            <div className="flex justify-end space-x-4 pt-6">
-              <button
-                type="button"
-                onClick={handleReset}
-                className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                disabled={isSubmitting}
-              >
-                Reset Changes
-              </button>
+            {/* Form Actions */}
+            <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
               <button
                 type="button"
                 onClick={() => router.push('/content-management')}
@@ -832,12 +958,29 @@ const EditHeroSliderPage = () => {
               >
                 Cancel
               </button>
+              
+              <button
+                type="button"
+                onClick={handleReset}
+                className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={isSubmitting || !hasChanges}
+              >
+                Reset Changes
+              </button>
+              
               <button
                 type="submit"
-                disabled={isSubmitting || !formData.title || !formData.buttonText || !formData.buttonLink}
+                disabled={isSubmitting || !formData.title || !formData.buttonText || !formData.buttonLink || !hasChanges}
                 className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? 'Updating...' : 'Update Slide'}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
               </button>
             </div>
           </form>
@@ -845,6 +988,12 @@ const EditHeroSliderPage = () => {
       </div>
     </div>
   );
-};
+}
 
-export default EditHeroSliderPage;
+export default function CategoryCardEditPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <CategoryCardEditContent />
+    </Suspense>
+  );
+}

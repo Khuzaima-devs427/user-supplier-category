@@ -1,30 +1,25 @@
 // import React, { useMemo, useState, useRef, useEffect } from 'react';
 // import { createPortal } from 'react-dom';
-// import { Eye, Edit, Trash2, ChevronDown, Check, Image as ImageIcon, ExternalLink } from 'lucide-react';
+// import { Eye, Edit, Trash2, ChevronDown, Check, Bell, BellOff, Copy } from 'lucide-react';
 
-// // Unified interface for HeroSlider items
-// interface HeroSliderItem {
+// // Interface for Announcement items
+// interface AnnouncementItem {
 //   id: string;
 //   _id: string;
 //   serialNo: number;
-//   image: string;
-//   title: string;
-//   buttonText: string;
-//   buttonLink: string;
+//   announcement: string;
 //   status: 'active' | 'inactive';
-//   displayOrder: number;
 //   createdAt: string;
 //   updatedAt: string;
-//   createdBy: string;
-//   tag?: string;
-//   description?: string;
+//   createdBy?: string;
+//   statusBadgeColor?: string;
 // }
 
-// interface UseHeroSliderColumnsProps {
-//   onEdit?: (item: HeroSliderItem) => void;
-//   onDelete?: (item: HeroSliderItem) => void;
-//   onStatusChange?: (item: HeroSliderItem, status: 'active' | 'inactive') => void;
-//   onView?: (item: HeroSliderItem) => void;
+// interface UseAnnouncementColumnsProps {
+//   onEdit?: (item: AnnouncementItem) => void;
+//   onDelete?: (item: AnnouncementItem) => void;
+//   onStatusChange?: (item: AnnouncementItem, status: 'active' | 'inactive') => void;
+//   onView?: (item: AnnouncementItem) => void;
 //   permissions?: { [key: string]: boolean };
 // }
 
@@ -144,34 +139,50 @@
 // }
 
 // /* -------------------------
-//    Main Hook for Hero Slider Columns
+//    Format Date Utility
 // -------------------------- */
-// export const useHeroSliderColumns = ({
+// const formatDate = (dateString: string) => {
+//   try {
+//     const date = new Date(dateString);
+//     return date.toLocaleDateString('en-US', {
+//       month: 'short',
+//       day: 'numeric',
+//       year: 'numeric',
+//       hour: '2-digit',
+//       minute: '2-digit'
+//     });
+//   } catch {
+//     return dateString;
+//   }
+// };
+
+// /* -------------------------
+//    Main Hook for Announcement Columns
+// -------------------------- */
+// export const useAnnouncementColumns = ({
 //   onEdit,
 //   onDelete,
 //   onStatusChange,
 //   onView,
 //   permissions = {}
-// }: UseHeroSliderColumnsProps) => {
+// }: UseAnnouncementColumnsProps) => {
 //   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 //   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
 
 //   const statusOptions = [
-//     { value: 'active' as const, label: 'Active', color: 'bg-green-100 text-green-800' },
-//     { value: 'inactive' as const, label: 'Inactive', color: 'bg-red-100 text-red-800' }
+//     { value: 'active' as const, label: 'Active', icon: Bell },
+//     { value: 'inactive' as const, label: 'Inactive', icon: BellOff }
 //   ];
 
-//   // Helper function to check permissions - SAME PATTERN AS OTHER HOOKS
+//   // Helper function to check permissions
 //   const hasPermission = (permissionKey: string): boolean => {
 //     // If user is static admin, they have ALL permissions
 //     if (permissions.isStaticAdmin === true) {
-//       console.log(`✅ Static admin override for permission: ${permissionKey}`);
 //       return true;
 //     }
     
 //     // Check specific permission
 //     const hasPerm = permissions[permissionKey] === true;
-//     console.log(`🔍 useHeroSliderColumns checking "${permissionKey}": ${hasPerm}`);
 //     return hasPerm;
 //   };
 
@@ -179,98 +190,54 @@
 //     () => [
 //       {
 //         name: 'S.No',
-//         selector: (row: HeroSliderItem) => row.serialNo,
+//         selector: (row: AnnouncementItem) => row.serialNo,
 //         sortable: true,
 //         width: '80px',
-//         cell: (row: HeroSliderItem) => (
-//           <div className="text-center text-gray-600 font-medium">
+//         cell: (row: AnnouncementItem) => (
+//           <div className="py-4 text-center text-gray-600 font-medium">
 //             {row.serialNo}
 //           </div>
 //         ),
 //       },
 //       {
-//         name: 'Image',
-//         selector: (row: HeroSliderItem) => row.image,
-//         sortable: false,
-//         width: '120px',
-//         cell: (row: HeroSliderItem) => {
-//           const imageUrl = row.image;
+//         name: 'Announcement',
+//         selector: (row: AnnouncementItem) => row.announcement,
+//         sortable: true,
+//         width: '285px',
+//         cell: (row: AnnouncementItem) => {
+//           const announcementText = row.announcement;
+//           const truncatedText = announcementText.length > 100 
+//             ? `${announcementText.substring(0, 100)}...` 
+//             : announcementText;
+          
 //           return (
-//             <div className="flex items-center justify-center p-2">
-//               <div className="w-16 h-12 rounded-md overflow-hidden border border-gray-200 shadow-sm">
-//                 <img
-//                   src={imageUrl || '/placeholder-image.jpg'}
-//                   alt={row.title}
-//                   className="w-full h-full object-cover"
-//                   onError={(e) => {
-//                     (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
-//                   }}
-//                 />
+//             <div className="py-4 max-w-xs">
+//               <div 
+//                 className="text-sm text-gray-900 line-clamp-2" 
+//                 title={announcementText}
+//               >
+//                 {truncatedText}
 //               </div>
 //             </div>
 //           );
 //         },
 //       },
 //       {
-//         name: 'Title',
-//         selector: (row: HeroSliderItem) => row.title,
-//         sortable: true,
-//         width: '250px',
-//         cell: (row: HeroSliderItem) => (
-//           <div className="max-w-xs">
-//             <div className="font-medium text-gray-900 truncate" title={row.title}>
-//               {row.title}
-//             </div>
-//             <div className="text-xs text-gray-500 mt-1">
-//               Order: {row.displayOrder}
-//             </div>
-//           </div>
-//         ),
-//       },
-//       {
-//         name: 'Button',
-//         selector: (row: HeroSliderItem) => row.buttonText,
-//         sortable: true,
-//         width: '180px',
-//         cell: (row: HeroSliderItem) => (
-//           <div className="flex items-center gap-2">
-//             <span className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-lg border border-blue-100">
-//               {row.buttonText}
-//             </span>
-//             <a
-//               href={row.buttonLink}
-//               target="_blank"
-//               rel="noopener noreferrer"
-//               className="text-blue-500 hover:text-blue-700 p-1 hover:bg-blue-50 rounded"
-//               title="Open Link"
-//             >
-//               <ExternalLink className="w-3.5 h-3.5" />
-//             </a>
-//           </div>
-//         ),
-//       },
-//       {
 //         name: 'Status',
-//         selector: (row: HeroSliderItem) => row.status,
+//         selector: (row: AnnouncementItem) => row.status,
 //         sortable: true,
-//         width: '130px',
-//         cell: (row: HeroSliderItem) => {
+//         width: '147px',
+//         cell: (row: AnnouncementItem) => {
 //           const id = `status-${row.id}`;
 //           const isOpen = activeDropdown === id;
 //           const current = statusOptions.find((s) => s.value === row.status);
+//           const Icon = current?.icon || BellOff;
           
 //           // Check if user has permission to change status
-//           const canChangeStatus = hasPermission('hero_slider.edit');
-
-//           console.log('🔍 Status dropdown permissions for hero slider:', {
-//             rowId: row.id,
-//             canChangeStatus,
-//             isStaticAdmin: permissions.isStaticAdmin,
-//             hero_slider_edit: permissions['hero_slider.edit']
-//           });
+//           const canChangeStatus = hasPermission('announcement_bar.edit'); // Changed from 'announcements.edit'
 
 //           return (
-//             <div className="relative overflow-visible">
+//             <div className="py-4 relative overflow-visible">
 //               <button
 //                 ref={(el) => {
 //                   refs.current[id] = el;
@@ -280,12 +247,17 @@
 //                     setActiveDropdown(isOpen ? null : id);
 //                   }
 //                 }}
-//                 className={`px-3 py-1.5 inline-flex items-center text-xs font-semibold rounded-lg transition-all duration-200 ${current?.color} ${
+//                 className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 ${
+//                   row.status === 'active' 
+//                     ? 'bg-green-100 text-green-800 border border-green-200' 
+//                     : 'bg-gray-100 text-gray-800 border border-gray-200'
+//                 } ${
 //                   !canChangeStatus ? 'cursor-not-allowed opacity-75' : 'hover:opacity-90'
 //                 }`}
 //                 disabled={!canChangeStatus}
 //                 title={!canChangeStatus ? "No permission to change status" : current?.label}
 //               >
+//                 <Icon className="w-3.5 h-3.5" />
 //                 {current?.label}
 //                 {canChangeStatus && (
 //                   <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -308,26 +280,73 @@
 //         }
 //       },
 //       {
+//         name: 'Created At',
+//         selector: (row: AnnouncementItem) => row.createdAt,
+//         sortable: true,
+//         width: '182px',
+//         cell: (row: AnnouncementItem) => {
+//           const timeAgo = getTimeAgo(row.createdAt);
+          
+//           return (
+//             <div className="py-4 text-sm">
+//               <div className="text-gray-900 font-medium">
+//                 {formatDate(row.createdAt)}
+//               </div>
+//               <div className="text-xs text-gray-500 mt-0.5">
+//                 {timeAgo}
+//               </div>
+//             </div>
+//           );
+//         },
+//       },
+//       {
+//         name: 'Updated At',
+//         selector: (row: AnnouncementItem) => row.updatedAt,
+//         sortable: true,
+//         width: '182px',
+//         cell: (row: AnnouncementItem) => {
+//           const timeAgo = getTimeAgo(row.updatedAt);
+//           const isRecent = isRecentUpdate(row.updatedAt);
+          
+//           return (
+//             <div className="py-4 text-sm">
+//               <div className={`flex items-center gap-1 ${isRecent ? 'text-blue-900' : 'text-gray-900'}`}>
+//                 {formatDate(row.updatedAt)}
+//                 {isRecent && (
+//                   <span className="inline-block w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
+//                 )}
+//               </div>
+//               <div className="text-xs text-gray-500 mt-0.5">
+//                 {timeAgo}
+//                 {row.updatedAt !== row.createdAt && ' (updated)'}
+//               </div>
+//             </div>
+//           );
+//         },
+//       },
+//       {
 //         name: 'Actions',
 //         width: '150px',
-//         cell: (row: HeroSliderItem) => {
-//           // Check permissions for each action
-//           const canView = hasPermission('hero_slider.view') || permissions.view === true;
-//           const canEdit = hasPermission('hero_slider.edit');
-//           const canDelete = hasPermission('hero_slider.delete');
+//         cell: (row: AnnouncementItem) => {
+//           // Check permissions for each action - USING CORRECT PERMISSION KEYS
+//           const canView = hasPermission('announcement_bar.view');
+//           const canEdit = hasPermission('announcement_bar.edit');
+//           const canDelete = hasPermission('announcement_bar.delete');
 
-//           console.log('🔍 Row action permissions for hero slider:', {
+//           console.log('🔍 Announcement action permissions:', {
 //             rowId: row.id,
 //             canView,
 //             canEdit,
 //             canDelete,
 //             isStaticAdmin: permissions.isStaticAdmin,
-//             hero_slider_edit: permissions['hero_slider.edit'],
-//             hero_slider_delete: permissions['hero_slider.delete']
+//             announcement_bar_view: permissions['announcement_bar.view'],
+//             announcement_bar_edit: permissions['announcement_bar.edit'],
+//             announcement_bar_delete: permissions['announcement_bar.delete']
 //           });
 
 //           return (
-//             <div className="flex items-center gap-2">
+//             <div className="py-4 flex items-center gap-2">
+//               {/* View Button */}
 //               {canView ? (
 //                 <button
 //                   onClick={() => onView?.(row)}
@@ -345,14 +364,15 @@
 //                 </div>
 //               )}
               
+//               {/* Edit Button */}
 //               {canEdit ? (
 //                 <button
 //                   onClick={() => {
-//                     console.log('✏️ Edit clicked for item:', row);
+//                     console.log('✏️ Edit clicked for announcement:', row);
 //                     onEdit?.(row);
 //                   }}
 //                   className="flex items-center justify-center w-8 h-8 bg-green-50 hover:bg-green-100 text-green-600 rounded-md transition duration-200"
-//                   title="Edit Item"
+//                   title="Edit Announcement"
 //                 >
 //                   <Edit className="w-4 h-4" />
 //                 </button>
@@ -365,14 +385,15 @@
 //                 </div>
 //               )}
               
+//               {/* Delete Button */}
 //               {canDelete ? (
 //                 <button
 //                   onClick={() => {
-//                     console.log('🗑️ Delete clicked for item:', row);
+//                     console.log('🗑️ Delete clicked for announcement:', row);
 //                     onDelete?.(row);
 //                   }}
 //                   className="flex items-center justify-center w-8 h-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-md transition duration-200"
-//                   title="Delete Item"
+//                   title="Delete Announcement"
 //                 >
 //                   <Trash2 className="w-4 h-4" />
 //                 </button>
@@ -395,6 +416,55 @@
 //   return columns;
 // };
 
+// /* -------------------------
+//    Helper Functions
+// -------------------------- */
+
+// // Calculate time ago
+// const getTimeAgo = (dateString: string): string => {
+//   try {
+//     const date = new Date(dateString);
+//     const now = new Date();
+//     const diffMs = now.getTime() - date.getTime();
+//     const diffMinutes = Math.floor(diffMs / (1000 * 60));
+//     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+//     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+//     if (diffDays > 0) {
+//       return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+//     } else if (diffHours > 0) {
+//       return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+//     } else if (diffMinutes > 0) {
+//       return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+//     } else {
+//       return 'Just now';
+//     }
+//   } catch {
+//     return 'Unknown time';
+//   }
+// };
+
+// // Check if update is recent (within last hour)
+// const isRecentUpdate = (dateString: string): boolean => {
+//   try {
+//     const date = new Date(dateString);
+//     const now = new Date();
+//     const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+//     return diffHours < 1;
+//   } catch {
+//     return false;
+//   }
+// };
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -409,31 +479,26 @@
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Eye, Edit, Trash2, ChevronDown, Check, Image as ImageIcon, ExternalLink } from 'lucide-react';
+import { Eye, Edit, Trash2, ChevronDown, Check, Bell, BellOff, Copy } from 'lucide-react';
 
-// Unified interface for HeroSlider items
-interface HeroSliderItem {
+// Interface for Announcement items
+interface AnnouncementItem {
   id: string;
   _id: string;
   serialNo: number;
-  image: string;
-  title: string;
-  buttonText: string;
-  buttonLink: string;
+  announcement: string;
   status: 'active' | 'inactive';
-  displayOrder: number;
   createdAt: string;
   updatedAt: string;
-  createdBy: string;
-  tag?: string;
-  description?: string;
+  createdBy?: string;
+  statusBadgeColor?: string;
 }
 
-interface UseHeroSliderColumnsProps {
-  onEdit?: (item: HeroSliderItem) => void;
-  onDelete?: (item: HeroSliderItem) => void;
-  onStatusChange?: (item: HeroSliderItem, status: 'active' | 'inactive') => void;
-  onView?: (item: HeroSliderItem) => void;
+interface UseAnnouncementColumnsProps {
+  onEdit?: (item: AnnouncementItem) => void;
+  onDelete?: (item: AnnouncementItem) => void;
+  onStatusChange?: (item: AnnouncementItem, status: 'active' | 'inactive') => void;
+  onView?: (item: AnnouncementItem) => void;
   permissions?: { [key: string]: boolean };
 }
 
@@ -553,34 +618,50 @@ function PortalDropdown<T>({
 }
 
 /* -------------------------
-   Main Hook for Hero Slider Columns
+   Format Date Utility
 -------------------------- */
-export const useHeroSliderColumns = ({
+const formatDate = (dateString: string) => {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch {
+    return dateString;
+  }
+};
+
+/* -------------------------
+   Main Hook for Announcement Columns
+-------------------------- */
+export const useAnnouncementColumns = ({
   onEdit,
   onDelete,
   onStatusChange,
   onView,
   permissions = {}
-}: UseHeroSliderColumnsProps) => {
+}: UseAnnouncementColumnsProps) => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const statusOptions = [
-    { value: 'active' as const, label: 'Active', color: 'bg-green-100 text-green-800' },
-    { value: 'inactive' as const, label: 'Inactive', color: 'bg-red-100 text-red-800' }
+    { value: 'active' as const, label: 'Active', icon: Bell },
+    { value: 'inactive' as const, label: 'Inactive', icon: BellOff }
   ];
 
-  // Helper function to check permissions - SAME PATTERN AS OTHER HOOKS
+  // Helper function to check permissions
   const hasPermission = (permissionKey: string): boolean => {
     // If user is static admin, they have ALL permissions
     if (permissions.isStaticAdmin === true) {
-      console.log(`✅ Static admin override for permission: ${permissionKey}`);
       return true;
     }
     
     // Check specific permission
     const hasPerm = permissions[permissionKey] === true;
-    console.log(`🔍 useHeroSliderColumns checking "${permissionKey}": ${hasPerm}`);
     return hasPerm;
   };
 
@@ -588,98 +669,54 @@ export const useHeroSliderColumns = ({
     () => [
       {
         name: 'S.No',
-        selector: (row: HeroSliderItem) => row.serialNo,
+        selector: (row: AnnouncementItem) => row.serialNo,
         sortable: true,
         width: '80px',
-        cell: (row: HeroSliderItem) => (
-          <div className="text-center text-gray-600 font-medium">
+        cell: (row: AnnouncementItem) => (
+          <div className="py-4 text-center text-gray-600 font-medium">
             {row.serialNo}
           </div>
         ),
       },
       {
-        name: 'Image',
-        selector: (row: HeroSliderItem) => row.image,
-        sortable: false,
-        width: '120px',
-        cell: (row: HeroSliderItem) => {
-          const imageUrl = row.image;
+        name: 'Announcement',
+        selector: (row: AnnouncementItem) => row.announcement,
+        sortable: true,
+        width: '285px',
+        cell: (row: AnnouncementItem) => {
+          const announcementText = row.announcement;
+          const truncatedText = announcementText.length > 100 
+            ? `${announcementText.substring(0, 100)}...` 
+            : announcementText;
+          
           return (
-            <div className="flex items-center justify-center p-2">
-              <div className="w-16 h-12 rounded-md overflow-hidden border border-gray-200 shadow-sm">
-                <img
-                  src={imageUrl || '/placeholder-image.jpg'}
-                  alt={row.title}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
-                  }}
-                />
+            <div className="py-4 max-w-xs">
+              <div 
+                className="text-sm text-gray-900 line-clamp-2" 
+                title={announcementText}
+              >
+                {truncatedText}
               </div>
             </div>
           );
         },
       },
       {
-        name: 'Title',
-        selector: (row: HeroSliderItem) => row.title,
-        sortable: true,
-        width: '250px',
-        cell: (row: HeroSliderItem) => (
-          <div className="max-w-xs">
-            <div className="font-medium text-gray-900 truncate" title={row.title}>
-              {row.title}
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              Order: {row.displayOrder}
-            </div>
-          </div>
-        ),
-      },
-      {
-        name: 'Button',
-        selector: (row: HeroSliderItem) => row.buttonText,
-        sortable: true,
-        width: '180px',
-        cell: (row: HeroSliderItem) => (
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-lg border border-blue-100">
-              {row.buttonText}
-            </span>
-            <a
-              href={row.buttonLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-500 hover:text-blue-700 p-1 hover:bg-blue-50 rounded"
-              title="Open Link"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          </div>
-        ),
-      },
-      {
         name: 'Status',
-        selector: (row: HeroSliderItem) => row.status,
+        selector: (row: AnnouncementItem) => row.status,
         sortable: true,
-        width: '130px',
-        cell: (row: HeroSliderItem) => {
+        width: '147px',
+        cell: (row: AnnouncementItem) => {
           const id = `status-${row.id}`;
           const isOpen = activeDropdown === id;
           const current = statusOptions.find((s) => s.value === row.status);
+          const Icon = current?.icon || BellOff;
           
           // Check if user has permission to change status
-          const canChangeStatus = hasPermission('hero_slider.edit');
-
-          console.log('🔍 Status dropdown permissions for hero slider:', {
-            rowId: row.id,
-            canChangeStatus,
-            isStaticAdmin: permissions.isStaticAdmin,
-            hero_slider_edit: permissions['hero_slider.edit']
-          });
+          const canChangeStatus = hasPermission('announcement_bar.edit'); // Changed from 'announcements.edit'
 
           return (
-            <div className="relative overflow-visible">
+            <div className="py-4 relative overflow-visible">
               <button
                 ref={(el) => {
                   refs.current[id] = el;
@@ -689,12 +726,17 @@ export const useHeroSliderColumns = ({
                     setActiveDropdown(isOpen ? null : id);
                   }
                 }}
-                className={`px-3 py-1.5 inline-flex items-center text-xs font-semibold rounded-lg transition-all duration-200 ${current?.color} ${
+                className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 ${
+                  row.status === 'active' 
+                    ? 'bg-green-100 text-green-800 border border-green-200' 
+                    : 'bg-gray-100 text-gray-800 border border-gray-200'
+                } ${
                   !canChangeStatus ? 'cursor-not-allowed opacity-75' : 'hover:opacity-90 cursor-pointer'
                 }`}
                 disabled={!canChangeStatus}
                 title={!canChangeStatus ? "No permission to change status" : current?.label}
               >
+                <Icon className="w-3.5 h-3.5" />
                 {current?.label}
                 <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${isOpen ? 'rotate-180' : ''} ${
                   !canChangeStatus ? 'text-gray-500' : ''
@@ -717,26 +759,73 @@ export const useHeroSliderColumns = ({
         }
       },
       {
+        name: 'Created At',
+        selector: (row: AnnouncementItem) => row.createdAt,
+        sortable: true,
+        width: '182px',
+        cell: (row: AnnouncementItem) => {
+          const timeAgo = getTimeAgo(row.createdAt);
+          
+          return (
+            <div className="py-4 text-sm">
+              <div className="text-gray-900 font-medium">
+                {formatDate(row.createdAt)}
+              </div>
+              <div className="text-xs text-gray-500 mt-0.5">
+                {timeAgo}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        name: 'Updated At',
+        selector: (row: AnnouncementItem) => row.updatedAt,
+        sortable: true,
+        width: '182px',
+        cell: (row: AnnouncementItem) => {
+          const timeAgo = getTimeAgo(row.updatedAt);
+          const isRecent = isRecentUpdate(row.updatedAt);
+          
+          return (
+            <div className="py-4 text-sm">
+              <div className={`flex items-center gap-1 ${isRecent ? 'text-blue-900' : 'text-gray-900'}`}>
+                {formatDate(row.updatedAt)}
+                {isRecent && (
+                  <span className="inline-block w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
+                )}
+              </div>
+              <div className="text-xs text-gray-500 mt-0.5">
+                {timeAgo}
+                {row.updatedAt !== row.createdAt && ' (updated)'}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
         name: 'Actions',
         width: '150px',
-        cell: (row: HeroSliderItem) => {
-          // Check permissions for each action
-          const canView = hasPermission('hero_slider.view') || permissions.view === true;
-          const canEdit = hasPermission('hero_slider.edit');
-          const canDelete = hasPermission('hero_slider.delete');
+        cell: (row: AnnouncementItem) => {
+          // Check permissions for each action - USING CORRECT PERMISSION KEYS
+          const canView = hasPermission('announcement_bar.view');
+          const canEdit = hasPermission('announcement_bar.edit');
+          const canDelete = hasPermission('announcement_bar.delete');
 
-          console.log('🔍 Row action permissions for hero slider:', {
+          console.log('🔍 Announcement action permissions:', {
             rowId: row.id,
             canView,
             canEdit,
             canDelete,
             isStaticAdmin: permissions.isStaticAdmin,
-            hero_slider_edit: permissions['hero_slider.edit'],
-            hero_slider_delete: permissions['hero_slider.delete']
+            announcement_bar_view: permissions['announcement_bar.view'],
+            announcement_bar_edit: permissions['announcement_bar.edit'],
+            announcement_bar_delete: permissions['announcement_bar.delete']
           });
 
           return (
-            <div className="flex items-center gap-2">
+            <div className="py-4 flex items-center gap-2">
+              {/* View Button */}
               {canView ? (
                 <button
                   onClick={() => onView?.(row)}
@@ -754,14 +843,15 @@ export const useHeroSliderColumns = ({
                 </div>
               )}
               
+              {/* Edit Button */}
               {canEdit ? (
                 <button
                   onClick={() => {
-                    console.log('✏️ Edit clicked for item:', row);
+                    console.log('✏️ Edit clicked for announcement:', row);
                     onEdit?.(row);
                   }}
                   className="flex items-center justify-center w-8 h-8 bg-green-50 hover:bg-green-100 text-green-600 rounded-md transition duration-200 cursor-pointer"
-                  title="Edit Item"
+                  title="Edit Announcement"
                 >
                   <Edit className="w-4 h-4" />
                 </button>
@@ -774,14 +864,15 @@ export const useHeroSliderColumns = ({
                 </div>
               )}
               
+              {/* Delete Button */}
               {canDelete ? (
                 <button
                   onClick={() => {
-                    console.log('🗑️ Delete clicked for item:', row);
+                    console.log('🗑️ Delete clicked for announcement:', row);
                     onDelete?.(row);
                   }}
                   className="flex items-center justify-center w-8 h-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-md transition duration-200 cursor-pointer"
-                  title="Delete Item"
+                  title="Delete Announcement"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -802,4 +893,44 @@ export const useHeroSliderColumns = ({
   );
 
   return columns;
+};
+
+/* -------------------------
+   Helper Functions
+-------------------------- */
+
+// Calculate time ago
+const getTimeAgo = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays > 0) {
+      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    } else if (diffHours > 0) {
+      return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    } else if (diffMinutes > 0) {
+      return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+    } else {
+      return 'Just now';
+    }
+  } catch {
+    return 'Unknown time';
+  }
+};
+
+// Check if update is recent (within last hour)
+const isRecentUpdate = (dateString: string): boolean => {
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    return diffHours < 1;
+  } catch {
+    return false;
+  }
 };

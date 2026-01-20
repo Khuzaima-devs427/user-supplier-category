@@ -1,4 +1,3 @@
-// components/HeroSliderViewModal.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -16,21 +15,25 @@ import {
   XCircle,
   ArrowUp,
   ArrowDown,
-  Loader2
+  Loader2,
+  Tag,
+  List,
+  Zap
 } from 'lucide-react';
 import { clientService } from '../../../../app/utils/api-client';
 import Image from 'next/image';
 
-interface HeroSliderViewModalProps {
+interface FeaturedSalesViewModalProps {
   isOpen: boolean;
   onClose: () => void;
   data: any;
 }
 
-interface HeroSliderItem {
+interface FeaturedSaleItem {
   _id: string;
   image: string;
   title: string;
+  subtitle: string;
   buttonText: string;
   buttonLink: string;
   status: 'active' | 'inactive';
@@ -39,26 +42,28 @@ interface HeroSliderItem {
   updatedAt: string;
   createdBy: string;
   createdByName?: string;
+  tag?: string;
+  description?: string;
 }
 
 // API Response interface
-interface HeroSliderResponse {
+interface FeaturedSaleResponse {
   success: boolean;
   message: string;
-  data: HeroSliderItem;
+  data: FeaturedSaleItem;
 }
 
-const HeroSliderViewModal: React.FC<HeroSliderViewModalProps> = ({ 
+const FeaturedSalesViewModal: React.FC<FeaturedSalesViewModalProps> = ({ 
   isOpen, 
   onClose, 
   data 
 }) => {
-  const [heroSlider, setHeroSlider] = useState<HeroSliderItem | null>(null);
+  const [featuredSale, setFeaturedSale] = useState<FeaturedSaleItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch hero slider data when modal opens
+  // Fetch featured sale data when modal opens
   useEffect(() => {
-    const fetchHeroSliderData = async () => {
+    const fetchFeaturedSaleData = async () => {
       if (!isOpen || !data) {
         setIsLoading(false);
         return;
@@ -68,48 +73,48 @@ const HeroSliderViewModal: React.FC<HeroSliderViewModalProps> = ({
         setIsLoading(true);
         
         // Try multiple ID fields
-        const sliderId = data.id || data._id || (data.data && (data.data.id || data.data._id));
+        const saleId = data.id || data._id || (data.data && (data.data.id || data.data._id));
         
-        if (!sliderId) {
-          console.error('❌ No hero slider ID found in data:', data);
+        if (!saleId) {
+          console.error('❌ No featured sale ID found in data:', data);
           setIsLoading(false);
           return;
         }
 
-        console.log('🔄 Fetching hero slider data for View modal ID:', sliderId);
+        console.log('🔄 Fetching featured sale data for View modal ID:', saleId);
         
-        const response = await clientService.get<HeroSliderResponse>(
-          `/hero-slider/${sliderId}`
+        const response = await clientService.get<FeaturedSaleResponse>(
+          `/featured-sales/${saleId}`
         );
         
-        console.log('✅ View Modal Hero Slider data received:', response.data);
+        console.log('✅ View Modal Featured Sale data received:', response.data);
         
         if (response.data.success) {
-          setHeroSlider(response.data.data);
+          setFeaturedSale(response.data.data);
         } else {
-          console.error('❌ Failed to fetch hero slider data for view modal');
+          console.error('❌ Failed to fetch featured sale data for view modal');
         }
       } catch (error) {
-        console.error('❌ Error fetching hero slider for view modal:', error);
+        console.error('❌ Error fetching featured sale for view modal:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchHeroSliderData();
+    fetchFeaturedSaleData();
   }, [isOpen, data]);
 
   // Reset when modal closes
   useEffect(() => {
     if (!isOpen) {
-      setHeroSlider(null);
+      setFeaturedSale(null);
       setIsLoading(true);
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  // Format date for display - Using native JavaScript
+  // Format date for display
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -126,13 +131,13 @@ const HeroSliderViewModal: React.FC<HeroSliderViewModalProps> = ({
   };
 
   // Use fetched data or fallback to props data
-  const displayData = heroSlider || data;
+  const displayData = featuredSale || data;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Background overlay */}
       <div 
-        className="fixed inset-0  bg-opacity-50 transition-opacity backdrop-blur-[3px]"
+        className="fixed inset-0 bg-opacity-50 transition-opacity backdrop-blur-[3px]"
         onClick={onClose}
       />
       
@@ -144,10 +149,10 @@ const HeroSliderViewModal: React.FC<HeroSliderViewModalProps> = ({
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">
-                  Hero Slider Details
+                  Featured Sale Details
                 </h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  Complete information about this homepage banner slide
+                  Complete information about this featured sale
                 </p>
               </div>
               <button
@@ -164,39 +169,47 @@ const HeroSliderViewModal: React.FC<HeroSliderViewModalProps> = ({
             {isLoading ? (
               <div className="flex justify-center items-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                <p className="ml-3 text-gray-600">Loading hero slider data...</p>
+                <p className="ml-3 text-gray-600">Loading featured sale data...</p>
               </div>
             ) : (
               <div className="space-y-6">
                 {/* Grid Layout for Details */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Left Column - Slide Information */}
+                  {/* Left Column - Sale Information & Timestamps */}
                   <div className="space-y-6">
-                    {/* Slide Information Card */}
+                    {/* Sale Information Card */}
                     <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        Slide Information
+                        <Zap className="h-5 w-5 text-orange-600" />
+                        Sale Information
                       </h3>
                       
                       <div className="space-y-4">
                         {/* Title */}
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-sm font-medium text-gray-700">Slide Title</span>
+                            <span className="text-sm font-medium text-gray-700">Sale Title</span>
                           </div>
                           <div className="p-3 bg-gray-50 rounded border border-gray-200">
                             <p className="text-gray-900 font-medium">{displayData.title || 'N/A'}</p>
                           </div>
-                          <div className="flex justify-between mt-1">
-                            <p className="text-xs text-gray-500">Maximum 200 characters</p>
-                            <p className="text-xs text-gray-500">{displayData.title?.length || 0}/200</p>
+                        </div>
+
+                        {/* Subtitle */}
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <List className="w-4 h-4 text-gray-400" />
+                            <span className="text-sm font-medium text-gray-700">Sale Subtitle</span>
+                          </div>
+                          <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                            <p className="text-gray-700">{displayData.subtitle || 'No subtitle provided'}</p>
                           </div>
                         </div>
 
                         {/* Display Order & Status */}
                         <div className="grid grid-cols-2 gap-4">
                           {/* Display Order */}
-                          <div>
+                          {/* <div>
                             <div className="flex items-center gap-2 mb-1">
                               <Hash className="w-4 h-4 text-gray-400" />
                               <span className="text-sm font-medium text-gray-700">Display Order</span>
@@ -214,10 +227,10 @@ const HeroSliderViewModal: React.FC<HeroSliderViewModalProps> = ({
                                 </div>
                               </div>
                             </div>
-                          </div>
+                          </div> */}
 
                           {/* Status */}
-                          <div>
+                          {/* <div>
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-sm font-medium text-gray-700">Status</span>
                             </div>
@@ -243,8 +256,24 @@ const HeroSliderViewModal: React.FC<HeroSliderViewModalProps> = ({
                                 ? 'Currently visible on homepage' 
                                 : 'Hidden from homepage'}
                             </p>
-                          </div>
+                          </div> */}
                         </div>
+
+                        {/* Tag (Optional) */}
+                        {displayData.tag && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <Tag className="w-4 h-4 text-gray-400" />
+                              <span className="text-sm font-medium text-gray-700">Sale Tag</span>
+                            </div>
+                            <div className="inline-flex items-center px-3 py-1.5 bg-orange-100 text-orange-800 rounded-lg text-sm font-medium border border-orange-200">
+                              {displayData.tag}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Optional sale identifier tag
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -263,7 +292,7 @@ const HeroSliderViewModal: React.FC<HeroSliderViewModalProps> = ({
                           <div className="p-3 bg-gray-50 rounded border border-gray-200">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                <div className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded shadow-sm">
+                                <div className="inline-flex items-center px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded shadow-sm">
                                   {displayData.buttonText || 'N/A'}
                                 </div>
                                 <span className="text-sm text-gray-600">Button Label</span>
@@ -287,7 +316,7 @@ const HeroSliderViewModal: React.FC<HeroSliderViewModalProps> = ({
                                 href={displayData.buttonLink}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 hover:underline truncate text-sm flex-1 mr-2"
+                                className="text-orange-600 hover:text-orange-800 hover:underline truncate text-sm flex-1 mr-2"
                                 title={displayData.buttonLink}
                               >
                                 {displayData.buttonLink || 'N/A'}
@@ -308,7 +337,7 @@ const HeroSliderViewModal: React.FC<HeroSliderViewModalProps> = ({
                                 href={displayData.buttonLink}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 shadow-sm"
+                                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 shadow-sm"
                               >
                                 Test Button Link
                                 <ExternalLink className="w-4 h-4 ml-2" />
@@ -319,98 +348,99 @@ const HeroSliderViewModal: React.FC<HeroSliderViewModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Slide Preview Card - MOVED HERE (below Button Configuration) */}
-                    <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-lg p-5 border border-blue-200 shadow-sm">
+                    {/* Sale Preview Section */}
+                    <div className="bg-linear-to-r from-orange-50 to-amber-50 rounded-lg p-5 border border-orange-200 shadow-sm">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <ImageIcon className="h-5 w-5 text-blue-600" />
-                        Slide Preview
+                        <ImageIcon className="h-5 w-5 text-orange-600" />
+                        Sale Preview
                       </h3>
                       
-<div className="space-y-6">
-  {/* Image Preview */}
-  <div className="relative aspect-21/11 rounded-xl overflow-hidden border border-gray-200 shadow-2xl group hover:shadow-3xl transition-shadow duration-300">
-    {displayData.image ? (
-      <div className="relative w-full h-full">
-        <Image
-          src={displayData.image}
-          alt={displayData.title || "Hero Slide"}
-          fill
-          className="object-cover transition-transform duration-700 group-hover:scale-105"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          priority
-        />
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/35 to-transparent" />
-      </div>
-    ) : (
-      <div className="flex items-center justify-center h-full bg-linear-to-br from-gray-100 to-gray-200">
-        <div className="text-center p-8">
-          <ImageIcon className="w-14 h-14 text-gray-400/80 mx-auto mb-3" />
-          <p className="text-gray-600 font-medium">No Image</p>
-        </div>
-      </div>
-    )}
-    
-    {/* Overlay with title and button */}
-    <div className="absolute inset-0 flex flex-col justify-end p-5 md:p-5">
-      <div className="text-indigo-100 w-full max-w-2xl">
-        <h3 className="text-2xl md:text-2xl font-bold mb-3 leading-tight drop-shadow-lg">
-          {displayData.title || 'Slide Title'}
-        </h3>
-        <div className="flex flex-wrap items-center gap-3">
-          <a
-            href={displayData.buttonLink || "#"}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center px-4 py-2 bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all duration-300 shadow-xl hover:shadow-2xl hover:-translate-y-0.5 active:translate-y-0"
-          >
-            <span className="mr-2">{displayData.buttonText || 'Button'}</span>
-            <ExternalLink className="w-4 h-4" />
-          </a>
-        </div>
-      </div>
-    </div>
-    
-  </div>
-  
-  {/* Image Source Information */}
-  
-    <div className="flex items-center justify-between">
-      <div>
-        <div className="text-gray-700">
-          <span className="font-semibold">Image Source:</span>{' '}
-          {displayData.image ? (
-            <span className="text-blue-600 font-medium">Cloudinary Storage</span>
-          ) : (
-            <span className="text-gray-500">No image</span>
-          )}
-        </div>
-      </div>
-
-    </div>
-</div>
-
+                      <div className="space-y-6">
+                        {/* Sale Preview Box */}
+                        <div className="relative aspect-4/3 rounded-xl overflow-hidden border border-gray-200 shadow-2xl group hover:shadow-3xl transition-shadow duration-300 bg-white">
+                          {displayData.image ? (
+                            <div className="relative w-full h-full">
+                              <Image
+                                src={displayData.image}
+                                alt={displayData.title || "Featured Sale"}
+                                fill
+                                className="object-cover transition-transform duration-700 group-hover:scale-105"
+                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                priority
+                              />
+                              {/* Gradient overlay */}
+                              <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center h-full bg-linear-to-br from-gray-100 to-gray-200">
+                              <div className="text-center p-8">
+                                <ImageIcon className="w-14 h-14 text-gray-400/80 mx-auto mb-3" />
+                                <p className="text-gray-600 font-medium">No Image</p>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Overlay with title, subtitle and button */}
+                          <div className="absolute inset-0 flex flex-col justify-end p-5">
+                            <div className="text-white w-full">
+                              <h3 className="text-xl font-bold mb-2 leading-tight drop-shadow-lg">
+                                {displayData.title || 'Featured Sale'}
+                              </h3>
+                              {displayData.subtitle && (
+                                <p className="text-sm text-gray-100 mb-3 opacity-90 drop-shadow">
+                                  {displayData.subtitle}
+                                </p>
+                              )}
+                              <div className="flex flex-wrap items-center gap-3">
+                                <a
+                                  href={displayData.buttonLink || "#"}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center px-4 py-2 bg-linear-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-medium rounded-lg transition-all duration-300 shadow-xl hover:shadow-2xl hover:-translate-y-0.5 active:translate-y-0"
+                                >
+                                  <span className="mr-2">{displayData.buttonText || 'Shop Now'}</span>
+                                  <ExternalLink className="w-4 h-4" />
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Image Source Information */}
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-gray-700">
+                              <span className="font-semibold">Image Source:</span>{' '}
+                              {displayData.image ? (
+                                <span className="text-orange-600 font-medium">Cloudinary Storage</span>
+                              ) : (
+                                <span className="text-gray-500">No image</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Right Column - Metadata */}
+                  {/* Right Column - Timestamps & System Information */}
                   <div className="space-y-6">
                     {/* Image Information Card */}
                     <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <ImageIcon className="h-5 w-5 text-purple-600" />
+                        <ImageIcon className="h-5 w-5 text-indigo-600" />
                         Image Information
                       </h3>
                       
                       <div className="space-y-4">
                         {/* Image Preview Thumbnail */}
                         <div className="flex justify-center">
-                          <div className="relative w-full max-w-xs aspect-video rounded-lg overflow-hidden border border-gray-300">
+                          <div className="relative w-full max-w-xs aspect-21/13 rounded-lg overflow-hidden border border-gray-300">
                             {displayData.image ? (
                               <div className="relative w-full h-full">
                                 <Image
                                   src={displayData.image}
-                                  alt="Slide thumbnail"
+                                  alt="Featured sale thumbnail"
                                   fill
                                   className="object-cover"
                                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -429,7 +459,7 @@ const HeroSliderViewModal: React.FC<HeroSliderViewModalProps> = ({
                           <div>
                             <p className="text-xs font-medium text-gray-500 mb-1">Storage</p>
                             <div className="flex items-center gap-1">
-                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                               <span className="font-medium text-gray-900">Cloudinary</span>
                             </div>
                           </div>
@@ -447,7 +477,7 @@ const HeroSliderViewModal: React.FC<HeroSliderViewModalProps> = ({
                     {/* Timestamps Card */}
                     <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <Calendar className="h-5 w-5 text-indigo-600" />
+                        <Calendar className="h-5 w-5 text-green-600" />
                         Timestamps
                       </h3>
                       
@@ -504,9 +534,9 @@ const HeroSliderViewModal: React.FC<HeroSliderViewModalProps> = ({
                       </h3>
                       
                       <div className="space-y-3">
-                        {/* Slide ID */}
+                        {/* Sale ID */}
                         <div>
-                          <p className="text-sm font-medium text-gray-700 mb-1">Slide ID</p>
+                          <p className="text-sm font-medium text-gray-700 mb-1">Sale ID</p>
                           <div className="p-3 bg-gray-50 rounded border border-gray-200">
                             <div className="flex items-center justify-between">
                               <code className="text-xs bg-gray-100 px-2 py-1 rounded font-mono text-gray-700 truncate flex-1">
@@ -520,35 +550,41 @@ const HeroSliderViewModal: React.FC<HeroSliderViewModalProps> = ({
                                     // You might want to add a toast here
                                   }
                                 }}
-                                className="ml-2 text-xs text-blue-600 hover:text-blue-800 whitespace-nowrap"
+                                className="ml-2 text-xs text-orange-600 hover:text-orange-800 whitespace-nowrap"
                               >
                                 Copy ID
                               </button>
                             </div>
                             <p className="text-xs text-gray-500 mt-2">
-                              Unique identifier for this slide in the database
+                              Unique identifier for this sale in the database
                             </p>
                           </div>
                         </div>
 
                         {/* Status Indicators */}
-                        <div className="grid grid-cols-2 gap-3 pt-3">
+                        <div className="grid grid-cols-3 gap-3 pt-3">
                           <div className={`p-2 rounded text-center ${
                             displayData.status === 'active' 
                               ? 'bg-green-50 border border-green-200' 
                               : 'bg-gray-50 border border-gray-200'
                           }`}>
-                            <p className="text-xs font-medium text-gray-600">Homepage</p>
+                            <p className="text-xs font-medium text-gray-600">Status</p>
                             <p className={`text-sm font-bold ${
                               displayData.status === 'active' ? 'text-green-700' : 'text-gray-700'
                             }`}>
-                              {displayData.status === 'active' ? 'Visible' : 'Hidden'}
+                              {displayData.status === 'active' ? 'Active' : 'Inactive'}
                             </p>
                           </div>
                           <div className="p-2 rounded text-center bg-blue-50 border border-blue-200">
                             <p className="text-xs font-medium text-gray-600">Display Order</p>
                             <p className="text-sm font-bold text-blue-700">
                               #{displayData.displayOrder || 'N/A'}
+                            </p>
+                          </div>
+                          <div className="p-2 rounded text-center bg-orange-50 border border-orange-200">
+                            <p className="text-xs font-medium text-gray-600">Type</p>
+                            <p className="text-sm font-bold text-orange-700">
+                              Featured Sale
                             </p>
                           </div>
                         </div>
@@ -565,7 +601,7 @@ const HeroSliderViewModal: React.FC<HeroSliderViewModalProps> = ({
             <div className="flex justify-center">
               <button
                 onClick={onClose}
-                className="px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors shadow-sm"
+                className="px-6 py-2 bg-orange-600 text-white text-sm font-medium rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors shadow-sm"
               >
                 Close
               </button>
@@ -577,4 +613,4 @@ const HeroSliderViewModal: React.FC<HeroSliderViewModalProps> = ({
   );
 };
 
-export default HeroSliderViewModal;
+export default FeaturedSalesViewModal;
