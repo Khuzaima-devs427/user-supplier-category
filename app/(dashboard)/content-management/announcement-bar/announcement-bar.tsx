@@ -220,40 +220,82 @@ const AnnouncementPage = () => {
   };
 
   // Handle status change - UPDATED to accept AnnouncementItem
-  const handleStatusChange = async (item: AnnouncementItem, status: 'active' | 'inactive') => {
-    if (!isClient) return;
-    
-    // Check permission
-    if (!hasPermission('announcement_bar.edit')) {
-      toast.error('You do not have permission to update announcement status');
-      return;
-    }
-    
-    const itemId = item._id;
-    if (!itemId) {
-      console.error('❌ Cannot update status: No ID found in item:', item);
-      toast.error('Cannot update status: Item ID is missing');
-      return;
-    }
-    
-    try {
-      const response = await clientService.patch<ApiResponse>(`/announcement-bar/${itemId}/toggle-status`, {
-        status: status
-      });
 
-      const result = response.data;
-      
-      if (!result.success) {
-        throw new Error(result.message || 'Failed to update announcement status');
-      }
 
-      await queryClient.invalidateQueries({ queryKey: ['announcement-bar'] });
-      toast.success(`Status updated to ${status}`);
-    } catch (error) {
-      console.error('❌ Error updating announcement status:', error);
-      toast.error(`Failed to update announcement status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+// Handle status change - UPDATED to ensure only one active announcement
+const handleStatusChange = async (item: AnnouncementItem, status: 'active' | 'inactive') => {
+  if (!isClient) return;
+  
+  // Check permission
+  if (!hasPermission('announcement_bar.edit')) {
+    toast.error('You do not have permission to update announcement status');
+    return;
+  }
+  
+  // If trying to set to inactive, just proceed normally
+  if (status === 'inactive') {
+    await updateSingleAnnouncementStatus(item, status);
+    return;
+  }
+  
+  // If trying to set to active, we need to deactivate others first
+  // Show confirmation dialog for better UX
+  const shouldProceed = window.confirm(
+    'Activating this announcement will deactivate the other active announcement. Continue?'
+  );
+  
+  if (!shouldProceed) return;
+  
+  try {
+    // Call a new API endpoint that handles multiple status changes
+    const response = await clientService.patch<ApiResponse>(`/announcement-bar/activate-single`, {
+      announcementId: item._id
+    });
+
+    const result = response.data;
+    
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to update announcement status');
     }
-  };
+
+    await queryClient.invalidateQueries({ queryKey: ['announcement-bar'] });
+    toast.success('Announcement activated! All other announcements are now inactive.');
+  } catch (error) {
+    console.error('❌ Error updating announcement status:', error);
+    toast.error(`Failed to update announcement status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
+
+
+
+// Helper function for updating single announcement (for inactive status)
+const updateSingleAnnouncementStatus = async (item: AnnouncementItem, status: 'active' | 'inactive') => {
+  const itemId = item._id;
+  if (!itemId) {
+    console.error('❌ Cannot update status: No ID found in item:', item);
+    toast.error('Cannot update status: Item ID is missing');
+    return;
+  }
+  
+  try {
+    // FIXED: Use the correct endpoint
+    const response = await clientService.patch<ApiResponse>(`/announcement-bar/${itemId}/toggle-status`, {
+      status: status
+    });
+
+    const result = response.data;
+    
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to update announcement status');
+    }
+
+    await queryClient.invalidateQueries({ queryKey: ['announcement-bar'] });
+    toast.success(`Status updated to ${status}`);
+  } catch (error) {
+    console.error('❌ Error updating announcement status:', error);
+    toast.error(`Failed to update announcement status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
 
   // Extract announcement items
   const announcementItems: AnnouncementItem[] = useMemo(() => {
