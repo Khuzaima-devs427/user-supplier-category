@@ -78,6 +78,7 @@ import FeaturedSalesPage from './featured-sales/featured-sales';
 import Announcement from './announcement-bar/announcement-bar';
 import FeatureCategory from './featured-categories/featured-categories';
 import FeaturedListings from './featured-listings/featured-listings';
+import FeaturedReviews from './featured-reviews/featured-reviews';
 import { usePermissions } from '../../_components/contexts/PermissionContext';
 
 // Define content component types and their permission keys
@@ -117,6 +118,12 @@ const CONTENT_COMPONENTS = [
     label: 'Featured Listings',
     permissionKey: 'featured_listings',
     component: FeaturedListings
+  },
+  {
+    id: 'featured-reviews',
+    label: 'Featured Reviews',
+    permissionKey: 'featured_reviews',
+    component: FeaturedReviews
   },
 ];
 
